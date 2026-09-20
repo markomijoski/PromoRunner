@@ -1,12 +1,46 @@
 (function () {
   'use strict';
 
+  const ASSET_BASE = '/game/';
+  const MAP_SRC = ASSET_BASE + 'map1.png';
+  const PLAYER_SRC = ASSET_BASE + 'car6.png';
+  const OBSTACLE_DEFS = [
+    { src: ASSET_BASE + 'car1.png', w: 40, h: 70 },
+    { src: ASSET_BASE + 'car2.png', w: 40, h: 70 },
+    { src: ASSET_BASE + 'car3.png', w: 40, h: 70 },
+    { src: ASSET_BASE + 'car4.png', w: 40, h: 70 },
+    { src: ASSET_BASE + 'car5.png', w: 40, h: 70 },
+    { src: ASSET_BASE + 'barrel.png', w: 50, h: 50 },
+    { src: ASSET_BASE + 'roadblock.png', w: 60, h: 50 }
+  ];
+
   const dto = window.GAME_CONFIG || {};
-  const configData = dto.config || dto;
   const playsRemainingInitial = typeof dto.playsRemaining === 'number' ? dto.playsRemaining : -1;
 
   let sessionId = null;
   let playsRemaining = playsRemainingInitial;
+  let runStartedAt = 0;
+
+  const state = {
+    phase: 'booting', // booting | waiting | playing | over
+    frameNo: 0,
+    score: 0,
+    result: null,
+    keys: Object.create(null),
+    touchDir: { x: 0, y: 0 }
+  };
+
+  let parentEl = null;
+  let canvas = null;
+  let ctx = null;
+  let loopId = null;
+  let resizeObserver = null;
+  let player = null;
+  let obstacles = [];
+  let images = {};
+  let endRequested = false;
+  let pendingStart = false;
+  let overlayEls = {};
 
   function showGate() {
     const el = document.getElementById('gate-overlay');
@@ -27,576 +61,459 @@
 
   function measureParent(el) {
     const rect = el.getBoundingClientRect();
-    const w = Math.max(280, Math.floor(rect.width) || el.clientWidth || 640);
-    const h = Math.max(360, Math.floor(rect.height) || el.clientHeight || 420);
+    const w = Math.max(280, Math.floor(rect.width) || el.clientWidth || 420);
+    const h = Math.max(360, Math.floor(rect.height) || el.clientHeight || 500);
     return { w: w, h: h };
   }
 
-  if (playsRemainingInitial === 0) {
-    showGate();
+  function loadImage(src) {
+    return new Promise(function (resolve, reject) {
+      const img = new Image();
+      img.onload = function () {
+        resolve(img);
+      };
+      img.onerror = function () {
+        reject(new Error('Не се вчита: ' + src));
+      };
+      img.src = src;
+    });
   }
 
-  function bakeTextures(scene) {
-    const g = scene.make.graphics({ x: 0, y: 0, add: false });
-
-    g.clear();
-    for (let f = 0; f < 4; f++) {
-      const ox = f * 64;
-      const leg = f % 2 === 0 ? 5 : -5;
-      g.fillStyle(0xffd200, 1);
-      g.fillCircle(ox + 32, 16, 13);
-      g.fillStyle(0x0a0a0a, 1);
-      g.fillRect(ox + 25, 28, 14, 18);
-      g.fillStyle(0xffd200, 1);
-      g.fillRect(ox + 28, 30, 5, 12);
-      g.fillStyle(0x0a0a0a, 1);
-      g.fillRect(ox + 22, 46, 9, 14 + leg);
-      g.fillRect(ox + 35, 46, 9, 14 - leg);
-      g.fillRect(ox + 14, 32, 11, 6);
-      g.fillRect(ox + 40, 32, 11, 6);
-    }
-    g.generateTexture('run_sheet', 256, 64);
-
-    g.clear();
-    g.fillStyle(0xffd200, 1);
-    g.fillCircle(32, 14, 13);
-    g.fillStyle(0x0a0a0a, 1);
-    g.fillRect(25, 24, 14, 16);
-    g.fillStyle(0xffd200, 1);
-    g.fillRect(28, 26, 5, 10);
-    g.fillStyle(0x0a0a0a, 1);
-    g.fillRect(18, 38, 10, 20);
-    g.fillRect(36, 38, 10, 20);
-    g.fillRect(10, 26, 14, 6);
-    g.fillRect(40, 26, 14, 6);
-    g.generateTexture('jump', 64, 64);
-
-    g.clear();
-    g.fillStyle(0xffd200, 1);
-    g.fillCircle(32, 22, 13);
-    g.fillStyle(0x0a0a0a, 1);
-    g.fillRect(25, 32, 14, 14);
-    g.fillStyle(0xffd200, 1);
-    g.fillRect(28, 34, 5, 8);
-    g.fillStyle(0x0a0a0a, 1);
-    g.fillRect(16, 44, 12, 14);
-    g.fillRect(36, 44, 12, 14);
-    g.fillRect(8, 30, 16, 6);
-    g.fillRect(40, 30, 16, 6);
-    g.generateTexture('fall', 64, 64);
-
-    g.clear();
-    g.fillStyle(0xffd200, 1);
-    g.fillCircle(14, 36, 11);
-    g.fillStyle(0x0a0a0a, 1);
-    g.fillRect(22, 30, 34, 16);
-    g.fillStyle(0xffd200, 1);
-    g.fillRect(28, 34, 20, 5);
-    g.generateTexture('slide', 64, 64);
-
-    g.clear();
-    g.fillStyle(0x0a0a0a, 1);
-    g.fillRect(0, 0, 64, 32);
-    g.fillStyle(0xffd200, 1);
-    g.fillRect(4, 4, 56, 8);
-    g.generateTexture('obs_low', 64, 32);
-
-    g.clear();
-    g.fillStyle(0x0a0a0a, 1);
-    g.fillRect(0, 0, 64, 32);
-    g.fillStyle(0xffd200, 1);
-    for (let i = 0; i < 5; i++) g.fillRect(6 + i * 11, 4, 5, 24);
-    g.generateTexture('obs_high', 64, 32);
-
-    g.clear();
-    g.fillStyle(0x0a0a0a, 1);
-    g.fillRect(0, 0, 32, 96);
-    g.fillStyle(0xffd200, 1);
-    g.fillRect(10, 0, 12, 96);
-    g.generateTexture('obs_vert', 32, 96);
-
-    g.destroy();
-
-    const src = scene.textures.get('run_sheet').getSourceImage();
-    if (scene.textures.exists('run')) {
-      scene.textures.remove('run');
-    }
-    scene.textures.addSpriteSheet('run', src, { frameWidth: 64, frameHeight: 64 });
-  }
-
-  const OBSTACLE_DEFS = [
-    { key: 'obs_low', type: 'H', positionType: 'LOW', minUnits: 1, maxUnits: 3, spawnWeight: 10, minScore: 0 },
-    { key: 'obs_high', type: 'H', positionType: 'HIGH', minUnits: 1, maxUnits: 2, spawnWeight: 8, minScore: 150 },
-    { key: 'obs_vert', type: 'V', positionType: null, minUnits: 1, maxUnits: 3, spawnWeight: 10, minScore: 0 }
-  ];
-
-  class BootScene extends Phaser.Scene {
-    constructor() {
-      super('Boot');
-    }
-
-    create() {
-      bakeTextures(this);
-      // Anim optional — gameplay uses rectangle runner
-      this.scene.start('Game');
-    }
-  }
-
-  class GameScene extends Phaser.Scene {
-    constructor() {
-      super('Game');
-    }
-
-    init() {
-      this.score = 0;
-      this.alive = false;
-      this.sliding = false;
-      this.unit = 32;
-      this.scrollSpeed = (configData && configData.baseScrollSpeed) || 280;
-      this.obstacles = null;
-      this.lastTypes = [];
-      this.spawnTimer = 0;
-      this.scoreTimer = 0;
-      this.waiting = true;
-      this.runStartedAt = 0;
-      this.cursors = null;
-      this.space = null;
-      this.ready = false;
-    }
-
-    create() {
-      hideGate();
-      const tip = this.add
-        .text(this.scale.width / 2, this.scale.height / 2, 'Се поврзува…', {
-          fontFamily: 'Source Sans 3, sans-serif',
-          fontSize: '20px',
-          color: '#5C5C5C'
-        })
-        .setOrigin(0.5);
-
-      this.startSession()
-        .then((ok) => {
-          if (!this.scene.isActive('Game')) return;
-          tip.destroy();
-          if (!ok) {
-            if (playsRemaining === 0) {
-              showGate();
-            } else {
-              showError('Сесијата не можеше да се стартува.');
-            }
-            return;
-          }
-          try {
-            this.buildWorld();
-          } catch (e) {
-            console.error(e);
-            showError((e && e.message) || 'Грешка при цртање на играта.');
-          }
-        })
-        .catch((err) => {
-          if (!this.scene.isActive('Game')) return;
-          tip.destroy();
-          showError(err && err.message ? err.message : 'Грешка при стартување.');
+  function loadAssets() {
+    const urls = [MAP_SRC, PLAYER_SRC].concat(OBSTACLE_DEFS.map(function (o) {
+      return o.src;
+    }));
+    const unique = Array.from(new Set(urls));
+    return Promise.all(
+      unique.map(function (src) {
+        return loadImage(src).then(function (img) {
+          images[src] = img;
         });
+      })
+    );
+  }
+
+  function scaleX(v) {
+    return (v / 420) * canvas.width;
+  }
+
+  function scaleY(v) {
+    return (v / 500) * canvas.height;
+  }
+
+  function startSession() {
+    const device = window.matchMedia('(pointer:coarse)').matches ? 'mobile' : 'desktop';
+    if (typeof window.amsmFetch !== 'function') {
+      return Promise.reject(new Error('amsmFetch недостапен'));
     }
 
-    buildWorld() {
-      this.unit = Math.max(28, this.scale.height / 12);
-      this.physics.world.gravity.y = this.unit * 40;
-      this.physics.world.setBounds(0, 0, this.scale.width, this.scale.height);
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller
+      ? setTimeout(function () {
+          controller.abort();
+        }, 4000)
+      : null;
 
-      this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xe8e8e8).setOrigin(0);
-
-      for (let i = 0; i < 16; i++) {
-        this.add
-          .rectangle(i * (this.scale.width / 8), this.scale.height * 0.5, 32, 5, 0xffd200, 0.45)
-          .setOrigin(0, 0.5);
-      }
-
-      const groundY = this.scale.height - this.unit;
-      this.ground = this.add.rectangle(0, groundY, this.scale.width, this.unit, 0x0a0a0a).setOrigin(0);
-      this.physics.add.existing(this.ground, true);
-
-      const charW = this.unit * 1.2;
-      const charH = this.unit * 2.2;
-      // Solid yellow runner — no sprite-sheet/anim dependency (avoids Phaser duration crash)
-      this.player = this.add.rectangle(
-        this.unit * 2.6,
-        groundY - charH / 2,
-        charW,
-        charH,
-        0xffd200
-      );
-      this.physics.add.existing(this.player);
-      this.player.body.setCollideWorldBounds(true);
-      this.player.body.setSize(charW * 0.85, charH * 0.9);
-      this.player.setDepth(5);
-      // Accent stripe
-      this.playerStripe = this.add.rectangle(
-        this.player.x,
-        this.player.y,
-        charW * 0.25,
-        charH * 0.7,
-        0x0a0a0a
-      ).setDepth(6);
-
-      this.physics.add.collider(this.player, this.ground);
-
-      this.obstacles = this.physics.add.group();
-      this.physics.add.overlap(this.player, this.obstacles, () => this.gameOver(), null, this);
-
-      this.scoreText = this.add
-        .text(this.scale.width - 18, 14, '0', {
-          fontFamily: 'Fira Sans Condensed, sans-serif',
-          fontSize: Math.max(28, Math.round(this.unit * 1.1)),
-          color: '#0A0A0A',
-          fontStyle: 'bold'
-        })
-        .setOrigin(1, 0)
-        .setDepth(20);
-
-      this.hint = this.add
-        .text(this.scale.width / 2, this.scale.height * 0.32, 'Допрете или Space за старт', {
-          fontFamily: 'Source Sans 3, sans-serif',
-          fontSize: Math.max(18, Math.round(this.unit * 0.55)),
-          color: '#0A0A0A',
-          backgroundColor: '#FFD200',
-          padding: { x: 16, y: 10 }
-        })
-        .setOrigin(0.5)
-        .setDepth(20);
-
-      if (this.input.keyboard) {
-        this.cursors = this.input.keyboard.createCursorKeys();
-        this.space = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-      }
-
-      this.input.on('pointerdown', (p) => {
-        if (!this.ready) return;
-        if (!this.alive) {
-          this.beginRun();
-          return;
+    return window
+      .amsmFetch('/api/game/session/start?deviceType=' + device, {
+        method: 'POST',
+        signal: controller ? controller.signal : undefined
+      })
+      .then(function (res) {
+        return res.json().catch(function () {
+          return {};
+        });
+      })
+      .then(function (data) {
+        if (timer) clearTimeout(timer);
+        if (!data.canPlay) {
+          playsRemaining = 0;
+          return false;
         }
-        if (p.y < this.scale.height / 2) this.tryJump();
-        else this.startSlide();
+        sessionId = data.sessionId;
+        playsRemaining = data.playsRemaining;
+        return true;
+      })
+      .catch(function (err) {
+        if (timer) clearTimeout(timer);
+        if (err && err.name === 'AbortError') {
+          throw new Error('Истече времето за поврзување (4с).');
+        }
+        throw new Error('Неуспешно поврзување со серверот.');
       });
-      this.input.on('pointerup', () => this.endSlide());
+  }
 
-      this.ready = true;
-      this.waiting = true;
+  function createOverlay() {
+    let root = document.getElementById('rf-overlay');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'rf-overlay';
+      root.style.cssText =
+        'position:absolute;inset:0;z-index:10;display:none;align-items:center;justify-content:center;' +
+        'flex-direction:column;text-align:center;padding:1.5rem;background:rgba(10,10,10,0.82);color:#fff;';
+      parentEl.appendChild(root);
     }
+    root.innerHTML =
+      '<p id="rf-overlay-title" style="font-family:Fira Sans Condensed,sans-serif;font-size:2rem;font-weight:800;margin:0"></p>' +
+      '<p id="rf-overlay-score" style="margin-top:0.75rem;font-size:1.25rem"></p>' +
+      '<p id="rf-overlay-rank" style="margin-top:0.35rem;font-size:0.95rem;color:rgba(255,255,255,0.75)"></p>' +
+      '<button id="rf-overlay-btn" type="button" style="margin-top:1.25rem;border:0;border-radius:0.5rem;' +
+      'padding:0.75rem 1.5rem;font-family:Fira Sans Condensed,sans-serif;font-weight:700;text-transform:uppercase;' +
+      'background:#FFD200;color:#0A0A0A;cursor:pointer"></button>';
+    overlayEls = {
+      root: root,
+      title: document.getElementById('rf-overlay-title'),
+      score: document.getElementById('rf-overlay-score'),
+      rank: document.getElementById('rf-overlay-rank'),
+      btn: document.getElementById('rf-overlay-btn')
+    };
+    overlayEls.btn.addEventListener('click', onOverlayAction);
+  }
 
-    fitBody(sprite, wFrac, hFrac) {
-      if (!sprite || !sprite.body || !sprite.frame) return;
-      const fw = sprite.frame.width;
-      const fh = sprite.frame.height;
-      const bw = fw * wFrac;
-      const bh = fh * hFrac;
-      sprite.body.setSize(bw, bh);
-      sprite.body.setOffset((fw - bw) / 2, fh - bh);
+  function showWaitingOverlay() {
+    if (!overlayEls.root) return;
+    overlayEls.title.textContent = 'Road Fighter';
+    overlayEls.score.textContent = 'Притиснете Space / ↑ или допрете за старт';
+    overlayEls.rank.textContent = 'Стрелки · ← → ↑ ↓ за возење';
+    overlayEls.btn.textContent = 'СТАРТ';
+    overlayEls.root.style.display = 'flex';
+  }
+
+  function showGameOverOverlay(result) {
+    if (!overlayEls.root) return;
+    overlayEls.title.textContent = 'КРАЈ';
+    overlayEls.score.textContent = 'Резултат: ' + (result.score || 0);
+    overlayEls.rank.textContent = result.rank ? 'Ранг #' + result.rank : '';
+    overlayEls.btn.textContent = 'ИГРАЈ ПОВТОРНО';
+    overlayEls.root.style.display = 'flex';
+  }
+
+  function hideOverlay() {
+    if (overlayEls.root) overlayEls.root.style.display = 'none';
+  }
+
+  function onOverlayAction() {
+    if (state.phase === 'waiting') {
+      beginRun();
+      return;
     }
-
-    startSession() {
-      const device = window.matchMedia('(pointer:coarse)').matches ? 'mobile' : 'desktop';
-      if (typeof window.amsmFetch !== 'function') {
-        return Promise.reject(new Error('amsmFetch недостапен'));
-      }
-
-      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timer = controller
-        ? setTimeout(function () {
-            controller.abort();
-          }, 4000)
-        : null;
-
-      return window
-        .amsmFetch('/api/game/session/start?deviceType=' + device, {
-          method: 'POST',
-          signal: controller ? controller.signal : undefined
-        })
-        .then(function (res) {
-          return res.json().catch(function () {
-            return {};
-          });
-        })
-        .then(function (data) {
-          if (timer) clearTimeout(timer);
-          if (!data.canPlay) {
-            playsRemaining = 0;
-            return false;
-          }
-          sessionId = data.sessionId;
-          playsRemaining = data.playsRemaining;
-          return true;
-        })
-        .catch(function (err) {
-          if (timer) clearTimeout(timer);
-          if (err && err.name === 'AbortError') {
-            throw new Error('Истече времето за поврзување (4с).');
-          }
-          throw new Error('Неуспешно поврзување со серверот.');
-        });
-    }
-
-    beginRun() {
-      if (!this.waiting || !sessionId || !this.ready) return;
-      this.waiting = false;
-      this.alive = true;
-      this.runStartedAt = this.time.now;
-      if (this.hint) this.hint.setVisible(false);
-      this.spawnTimer = 400;
-    }
-
-    onGround() {
-      return (
-        this.player &&
-        this.player.body &&
-        (this.player.body.blocked.down || this.player.body.touching.down)
-      );
-    }
-
-    tryJump() {
-      if (!this.alive || this.sliding || !this.onGround()) return;
-      this.player.body.setVelocityY(-this.unit * 12.5);
-    }
-
-    startSlide() {
-      if (!this.alive || this.sliding || !this.onGround()) return;
-      this.sliding = true;
-      const u = this.unit;
-      this.player.setSize(u * 1.8, u);
-      this.player.body.setSize(u * 1.6, u * 0.85);
-      this.player.y = this.scale.height - u - u / 2;
-      if (this.playerStripe) {
-        this.playerStripe.setSize(u * 1.8 * 0.25, u * 0.6);
-        this.playerStripe.setPosition(this.player.x, this.player.y);
-      }
-    }
-
-    endSlide() {
-      if (!this.sliding) return;
-      this.sliding = false;
-      const u = this.unit;
-      this.player.setSize(u * 1.2, u * 2.2);
-      this.player.body.setSize(u * 1.2 * 0.85, u * 2.2 * 0.9);
-      if (this.playerStripe) {
-        this.playerStripe.setSize(u * 1.2 * 0.25, u * 2.2 * 0.7);
-        this.playerStripe.setPosition(this.player.x, this.player.y);
-      }
-    }
-
-    keyJust(key) {
-      return key && Phaser.Input.Keyboard.JustDown(key);
-    }
-
-    update(_t, dt) {
-      if (!this.ready || !this.player) return;
-
-      if (this.waiting) {
-        if (this.keyJust(this.space) || (this.cursors && this.keyJust(this.cursors.up))) {
-          this.beginRun();
-        }
+    if (state.phase === 'over') {
+      if (playsRemaining === 0) {
+        showGate();
+        const root = document.querySelector('[x-data]');
+        if (root && window.Alpine) Alpine.$data(root).openConsent();
         return;
       }
-      if (!this.alive) return;
-
-      if (this.keyJust(this.space) || (this.cursors && this.keyJust(this.cursors.up))) {
-        this.tryJump();
-      }
-      if (this.cursors && this.cursors.down.isDown) this.startSlide();
-      else if (this.sliding && !this.input.activePointer.isDown) this.endSlide();
-
-      if (this.playerStripe) {
-        this.playerStripe.setPosition(this.player.x, this.player.y);
-      }
-
-      const band = this.score < 400 ? 1 : this.score < 900 ? 1.25 : this.score < 1800 ? 1.55 : 2;
-      this.scrollSpeed = ((configData && configData.baseScrollSpeed) || 280) * band;
-
-      this.scoreTimer += dt;
-      if (this.scoreTimer > 90) {
-        this.score += Math.max(1, Math.round(band));
-        this.scoreTimer = 0;
-        this.scoreText.setText(String(this.score));
-      }
-
-      this.spawnTimer += dt;
-      if (this.spawnTimer > Math.max(600, 1400 - this.score * 0.4)) {
-        this.spawnTimer = 0;
-        this.spawnObstacle(this.score < 500 ? 5 : this.score < 1000 ? 4.2 : 3.5);
-      }
-
-      this.obstacles.children.iterate((obs) => {
-        if (!obs) return;
-        obs.x -= (this.scrollSpeed * dt) / 1000;
-        if (obs.x < -140) obs.destroy();
-      });
-    }
-
-    pick(list) {
-      const total = list.reduce((s, o) => s + o.spawnWeight, 0);
-      let r = Math.random() * total;
-      for (let i = 0; i < list.length; i++) {
-        r -= list[i].spawnWeight;
-        if (r <= 0) return list[i];
-      }
-      return list[0];
-    }
-
-    spawnObstacle(minGapUnits) {
-      let list = OBSTACLE_DEFS.filter((o) => o.minScore <= this.score);
-      const last = this.lastTypes[this.lastTypes.length - 1];
-      if (last === 'V') list = list.filter((o) => o.positionType !== 'HIGH');
-      let lows = 0;
-      for (let i = this.lastTypes.length - 1; i >= 0; i--) {
-        if (this.lastTypes[i] === 'LOW') lows++;
-        else break;
-      }
-      if (lows >= 2) list = list.filter((o) => o.positionType !== 'LOW');
-      if (!list.length) list = OBSTACLE_DEFS.slice();
-
-      const asset = this.pick(list);
-      const units = Phaser.Math.Between(asset.minUnits, asset.maxUnits);
-      const u = this.unit;
-      const groundY = this.scale.height - u;
-      let w;
-      let h;
-      let y;
-      let tag;
-
-      if (asset.type === 'V') {
-        w = u * 0.95;
-        h = u * units;
-        y = groundY - h / 2;
-        tag = 'V';
-      } else if (asset.positionType === 'HIGH') {
-        w = u * units;
-        h = u * 0.9;
-        y = groundY - u * 2.15 - h / 2;
-        tag = 'HIGH';
-      } else {
-        w = u * units;
-        h = u * 0.9;
-        y = groundY - h / 2;
-        tag = 'LOW';
-      }
-      this.lastTypes.push(tag);
-      if (this.lastTypes.length > 4) this.lastTypes.shift();
-
-      const obs = this.obstacles.create(this.scale.width + minGapUnits * u, y, asset.key);
-      obs.setDisplaySize(w, h);
-      this.fitBody(obs, 0.85, 0.85);
-      obs.body.setAllowGravity(false);
-      obs.body.setImmovable(true);
-    }
-
-    async gameOver() {
-      if (!this.alive) return;
-      this.alive = false;
-      this.player.setFillStyle(0xffaa00);
-      this.physics.pause();
-
-      const durationMs = Math.max(0, Math.round(this.time.now - (this.runStartedAt || 0)));
-      let result = { score: this.score, personalBest: false, rank: null, totalPlayers: 0 };
-      if (sessionId != null) {
-        try {
-          const res = await window.amsmFetch('/api/game/session/' + sessionId + '/end', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ score: this.score, durationMs: durationMs })
-          });
-          if (res.ok) result = await res.json();
-        } catch (e) {}
-      }
-      this.scene.start('GameOver', result);
+      prepareWaiting();
     }
   }
 
-  class GameOverScene extends Phaser.Scene {
-    constructor() {
-      super('GameOver');
-    }
+  function resetEntities() {
+    obstacles = [];
+    state.frameNo = 0;
+    state.score = 0;
+    endRequested = false;
+    player = {
+      x: scaleX(200),
+      y: scaleY(400),
+      w: scaleX(40),
+      h: scaleY(70),
+      speedX: 0,
+      speedY: 0
+    };
+  }
 
-    create(data) {
-      this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xffffff, 0.96).setOrigin(0);
-      this.add
-        .text(this.scale.width / 2, this.scale.height * 0.22, 'КРАЈ', {
-          fontFamily: 'Fira Sans Condensed, sans-serif',
-          fontSize: '48px',
-          color: '#0A0A0A',
-          fontStyle: 'bold'
-        })
-        .setOrigin(0.5);
-      this.add
-        .text(this.scale.width / 2, this.scale.height * 0.4, 'Резултат: ' + (data.score || 0), {
-          fontFamily: 'Fira Sans Condensed, sans-serif',
-          fontSize: '28px',
-          color: '#0A0A0A'
-        })
-        .setOrigin(0.5);
-      if (data.rank) {
-        this.add
-          .text(this.scale.width / 2, this.scale.height * 0.5, 'Ранг #' + data.rank, {
-            fontFamily: 'Source Sans 3, sans-serif',
-            fontSize: '18px',
-            color: '#5C5C5C'
-          })
-          .setOrigin(0.5);
-      }
-
-      const again = this.add
-        .text(this.scale.width / 2, this.scale.height * 0.68, 'ИГРАЈ ПОВТОРНО', {
-          fontFamily: 'Fira Sans Condensed, sans-serif',
-          fontSize: '22px',
-          color: '#0A0A0A',
-          backgroundColor: '#FFD200',
-          padding: { x: 22, y: 12 }
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true });
-
-      again.on('pointerup', () => {
-        if (playsRemaining === 0) {
+  function prepareWaiting() {
+    state.phase = 'waiting';
+    state.result = null;
+    sessionId = null;
+    pendingStart = false;
+    resetEntities();
+    showWaitingOverlay();
+    startSession()
+      .then(function (ok) {
+        if (!ok) {
+          pendingStart = false;
           showGate();
-          const root = document.querySelector('[x-data]');
-          if (root && window.Alpine) Alpine.$data(root).openConsent();
+          hideOverlay();
+          state.phase = 'over';
           return;
         }
-        this.scene.start('Game');
+        if (pendingStart) beginRun();
+      })
+      .catch(function (err) {
+        pendingStart = false;
+        showError(err.message || 'Грешка');
       });
+  }
+
+  function beginRun() {
+    if (state.phase !== 'waiting') return;
+    if (sessionId == null) {
+      pendingStart = true;
+      return;
     }
+    pendingStart = false;
+    state.phase = 'playing';
+    hideOverlay();
+    runStartedAt = performance.now();
+    resetEntities();
+  }
+
+  function crashWith(a, b) {
+    const myleft = a.x;
+    const myright = a.x + a.w;
+    const mytop = a.y;
+    const mybottom = a.y + a.h;
+    const otherleft = b.x;
+    const otherright = b.x + b.w;
+    const othertop = b.y;
+    const otherbottom = b.y + b.h;
+    if (mybottom < othertop || mytop > otherbottom - scaleY(20) || myright < otherleft || myleft > otherright) {
+      return false;
+    }
+    return true;
+  }
+
+  function everyInterval(n) {
+    return state.frameNo === 1 || state.frameNo % n === 0;
+  }
+
+  function spawnObstacle() {
+    const def = OBSTACLE_DEFS[Math.floor(Math.random() * OBSTACLE_DEFS.length)];
+    const minX = scaleX(100);
+    const maxX = Math.max(minX + 1, canvas.width - scaleX(120));
+    const x = minX + Math.random() * (maxX - minX);
+    obstacles.push({
+      src: def.src,
+      x: x,
+      y: -scaleY(def.h),
+      w: scaleX(def.w),
+      h: scaleY(def.h)
+    });
+  }
+
+  function clampPlayer() {
+    player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
+    player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
+  }
+
+  function updatePlaying() {
+    for (let i = 0; i < obstacles.length; i++) {
+      if (crashWith(player, obstacles[i])) {
+        gameOver();
+        return;
+      }
+    }
+
+    state.frameNo += 1;
+    state.score = state.frameNo;
+
+    if (everyInterval(80)) spawnObstacle();
+
+    const speed = scaleY(4);
+    for (let i = 0; i < obstacles.length; i++) {
+      obstacles[i].y += speed;
+    }
+    obstacles = obstacles.filter(function (o) {
+      return o.y < canvas.height + o.h;
+    });
+
+    const moveX = scaleX(3);
+    const moveY = scaleY(3);
+    player.speedX = 0;
+    player.speedY = 0;
+
+    if (state.keys[37] || state.keys[65] || state.touchDir.x < 0) player.speedX = -moveX;
+    if (state.keys[39] || state.keys[68] || state.touchDir.x > 0) player.speedX = moveX;
+    if (state.keys[38] || state.keys[87] || state.touchDir.y < 0) player.speedY = -moveY;
+    if (state.keys[40] || state.keys[83] || state.touchDir.y > 0) player.speedY = moveY;
+
+    player.x += player.speedX;
+    player.y += player.speedY;
+    clampPlayer();
+  }
+
+  function drawRoadBackground() {
+    const map = images[MAP_SRC];
+    if (!map) {
+      ctx.fillStyle = '#2a2a2a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+    const scroll = (state.frameNo * scaleY(8)) % canvas.height;
+    ctx.drawImage(map, 0, scroll - canvas.height, canvas.width, canvas.height);
+    ctx.drawImage(map, 0, scroll, canvas.width, canvas.height);
+  }
+
+  function draw() {
+    if (!ctx) return;
+    drawRoadBackground();
+
+    if (player && images[PLAYER_SRC]) {
+      ctx.drawImage(images[PLAYER_SRC], player.x, player.y, player.w, player.h);
+    }
+
+    for (let i = 0; i < obstacles.length; i++) {
+      const o = obstacles[i];
+      const img = images[o.src];
+      if (img) ctx.drawImage(img, o.x, o.y, o.w, o.h);
+    }
+
+    if (state.phase === 'playing' || state.phase === 'over') {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold ' + Math.max(16, Math.floor(scaleX(28))) + 'px Impact, Fira Sans Condensed, sans-serif';
+      ctx.fillText('SCORE: ' + state.score, scaleX(140), scaleY(40));
+    }
+  }
+
+  function gameOver() {
+    if (state.phase !== 'playing' || endRequested) return;
+    endRequested = true;
+    state.phase = 'over';
+
+    const durationMs = Math.max(0, Math.round(performance.now() - runStartedAt));
+    const payload = { score: state.score, durationMs: durationMs };
+    let result = { score: state.score, personalBest: false, rank: null, totalPlayers: 0 };
+
+    const finish = function (r) {
+      state.result = r;
+      showGameOverOverlay(r);
+    };
+
+    if (sessionId == null) {
+      finish(result);
+      return;
+    }
+
+    window
+      .amsmFetch('/api/game/session/' + sessionId + '/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(function (res) {
+        if (res.ok) return res.json();
+        return result;
+      })
+      .then(finish)
+      .catch(function () {
+        finish(result);
+      });
+  }
+
+  function tick() {
+    if (state.phase === 'playing') updatePlaying();
+    draw();
+  }
+
+  function onKeyDown(e) {
+    state.keys[e.keyCode] = true;
+    if (state.phase === 'waiting' && (e.keyCode === 32 || e.keyCode === 38)) {
+      e.preventDefault();
+      beginRun();
+    }
+  }
+
+  function onKeyUp(e) {
+    state.keys[e.keyCode] = false;
+  }
+
+  function updateTouchFromPoint(clientX, clientY) {
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    state.touchDir.x = x < cx * 0.85 ? -1 : x > cx * 1.15 ? 1 : 0;
+    state.touchDir.y = y < cy * 0.85 ? -1 : y > cy * 1.15 ? 1 : 0;
+  }
+
+  function onPointerDown(e) {
+    if (state.phase === 'waiting') {
+      beginRun();
+      return;
+    }
+    if (state.phase !== 'playing') return;
+    updateTouchFromPoint(e.clientX, e.clientY);
+  }
+
+  function onPointerMove(e) {
+    if (state.phase !== 'playing') return;
+    if (e.buttons === 0 && e.pointerType === 'mouse') return;
+    updateTouchFromPoint(e.clientX, e.clientY);
+  }
+
+  function onPointerUp() {
+    state.touchDir.x = 0;
+    state.touchDir.y = 0;
+  }
+
+  function resizeCanvas() {
+    if (!parentEl || !canvas) return;
+    const size = measureParent(parentEl);
+    const prevW = canvas.width || size.w;
+    const prevH = canvas.height || size.h;
+    canvas.width = size.w;
+    canvas.height = size.h;
+    if (player && prevW > 0 && prevH > 0) {
+      player.x = (player.x / prevW) * size.w;
+      player.y = (player.y / prevH) * size.h;
+      player.w = scaleX(40);
+      player.h = scaleY(70);
+      clampPlayer();
+    }
+  }
+
+  function bindInput() {
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    canvas.style.touchAction = 'none';
   }
 
   function bootGame() {
-    const parent = document.getElementById('game-canvas');
-    if (!parent) {
+    parentEl = document.getElementById('game-canvas');
+    if (!parentEl) {
       showError('Нема game-canvas елемент.');
       return;
     }
-    if (typeof Phaser === 'undefined') {
-      showError('Phaser не се вчита. Проверете ја мрежата.');
+
+    if (playsRemainingInitial === 0) {
+      showGate();
       return;
     }
 
-    const size = measureParent(parent);
-    const game = new Phaser.Game({
-      type: Phaser.AUTO,
-      parent: 'game-canvas',
-      width: size.w,
-      height: size.h,
-      backgroundColor: '#e8e8e8',
-      physics: { default: 'arcade', arcade: { debug: false } },
-      scale: {
-        mode: Phaser.Scale.RESIZE,
-        parent: 'game-canvas',
-        width: size.w,
-        height: size.h,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-      },
-      scene: [BootScene, GameScene, GameOverScene]
-    });
+    canvas = document.createElement('canvas');
+    canvas.setAttribute('aria-label', 'Road Fighter');
+    parentEl.innerHTML = '';
+    parentEl.appendChild(canvas);
+    ctx = canvas.getContext('2d');
+    resizeCanvas();
+    createOverlay();
+    bindInput();
 
-    window.__amsmGame = game;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(function () {
+        resizeCanvas();
+      });
+      resizeObserver.observe(parentEl);
+    } else {
+      window.addEventListener('resize', resizeCanvas);
+    }
+
+    loadAssets()
+      .then(function () {
+        prepareWaiting();
+        loopId = setInterval(tick, 20);
+        window.__amsmGame = { canvas: canvas, getPhase: function () { return state.phase; } };
+      })
+      .catch(function (err) {
+        showError(err.message || 'Неуспешно вчитување на играта.');
+      });
   }
 
   if (document.readyState === 'loading') {

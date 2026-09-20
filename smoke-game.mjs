@@ -97,7 +97,7 @@ import fs from 'fs';
         if (!gameNav) report.ok = false;
 
         const canvas = await page.locator('#game-canvas canvas').count();
-        log('phaser_canvas', canvas > 0 ? 'PASS' : 'FAIL');
+        log('game_canvas', canvas > 0 ? 'PASS' : 'FAIL');
         if (!canvas) report.ok = false;
 
         const errVisible = await page.evaluate(() => {
@@ -112,10 +112,11 @@ import fs from 'fs';
         if (errVisible) report.ok = false;
 
         const gameState = await page.evaluate(() => {
-          const g = window.__game || null;
           const canvas = document.querySelector('#game-canvas canvas');
+          const game = window.__amsmGame || null;
           return {
-            hasPhaser: typeof Phaser !== 'undefined',
+            hasCanvas: !!canvas,
+            phase: game && game.getPhase ? game.getPhase() : null,
             canvasW: canvas ? canvas.width : 0,
             canvasH: canvas ? canvas.height : 0,
             gameConfig: !!(window.GAME_CONFIG),
