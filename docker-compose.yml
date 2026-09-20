@@ -1,0 +1,8 @@
+services:
+  mailpit:
+    image: axllent/mailpit
+    container_name: promorunner-mailpit
+    ports:
+      - "1025:1025"   # SMTP — matches spring.mail.port in application.yml
+      - "8025:8025"   # Web UI — http://localhost:8025
+    restart: unless-stopped

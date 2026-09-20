@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="mk" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(pageTitle='Leads')}"></head>
+<body class="bg-amsm-soft">
+<header class="bg-amsm-ink text-white">
+  <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+    <a href="/admin" class="font-display text-xl font-bold text-amsm-yellow">AMSM Admin</a>
+    <nav class="flex flex-wrap gap-4 text-sm">
+      <a href="/admin" class="hover:text-amsm-yellow">Dashboard</a>
+      <a href="/admin/assets" class="hover:text-amsm-yellow">Assets</a>
+      <a href="/admin/leads" class="text-amsm-yellow">Leads</a>
+      <a href="/admin/api/leads?format=csv" class="rounded bg-amsm-yellow px-3 py-1.5 font-bold text-amsm-ink">CSV</a>
+    </nav>
+  </div>
+</header>
+<main class="mx-auto max-w-5xl px-4 py-10">
+  <h1 class="font-display text-3xl font-bold">Leads</h1>
+  <div class="mt-6 overflow-x-auto rounded-xl border border-black/10 bg-white">
+    <table class="min-w-full text-left text-sm" id="leads-table">
+      <thead class="border-b bg-amsm-ink text-white">
+        <tr>
+          <th class="px-4 py-3">ID</th>
+          <th class="px-4 py-3">Email</th>
+          <th class="px-4 py-3">Name</th>
+          <th class="px-4 py-3">Consented</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</main>
+<script>
+  fetch('/admin/api/leads', { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(rows => {
+      const tb = document.querySelector('#leads-table tbody');
+      if (!Array.isArray(rows) || !rows.length) {
+        tb.innerHTML = '<tr><td class="px-4 py-6 text-amsm-muted" colspan="4">Нема leads.</td></tr>';
+        return;
+      }
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-black/5';
+        const cells = [row.userId, row.email, row.displayName || '', row.consentedAt || ''];
+        cells.forEach(val => {
+          const td = document.createElement('td');
+          td.className = 'px-4 py-2';
+          td.textContent = val == null ? '' : String(val);
+          tr.appendChild(td);
+        });
+        tb.appendChild(tr);
+      });
+    });
+</script>
+</body>
+</html>

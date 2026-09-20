@@ -1,0 +1,96 @@
+<head th:fragment="head(pageTitle)" xmlns:th="http://www.thymeleaf.org">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#FFD200"/>
+  <meta name="_csrf" th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+  <title th:text="${pageTitle} ?: ${brand.name}">AMSM Runner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amsm: {
+              yellow: 'var(--color-primary)',
+              ink: 'var(--color-ink)',
+              muted: 'var(--color-muted)',
+              soft: 'var(--color-soft)'
+            }
+          },
+          fontFamily: {
+            display: ['"Fira Sans Condensed"', 'sans-serif'],
+            sans: ['"Source Sans 3"', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style th:inline="css">
+    :root {
+      --color-primary: /*[[${brand.primaryColor}]]*/ #FFD200;
+      --color-ink: /*[[${brand.secondaryColor}]]*/ #0A0A0A;
+      --color-bg: /*[[${brand.backgroundColor}]]*/ #FFFFFF;
+      --color-muted: #5C5C5C;
+      --color-soft: #F7F7F7;
+    }
+    body {
+      font-family: "Source Sans 3", sans-serif;
+      background: var(--color-bg);
+      color: var(--color-ink);
+      min-height: 100dvh;
+    }
+    .font-display { font-family: "Fira Sans Condensed", sans-serif; }
+    .road-lines {
+      background-color: var(--color-bg);
+      background-image:
+        linear-gradient(90deg, transparent 0, transparent 47%, rgba(10,10,10,0.04) 49%, rgba(10,10,10,0.04) 51%, transparent 53%, transparent 100%),
+        linear-gradient(180deg, var(--color-primary) 0, var(--color-primary) 6px, transparent 6px);
+      background-size: 64px 100%, 100% 100%;
+      background-repeat: repeat, no-repeat;
+    }
+    .reveal { animation: revealUp 0.55s ease both; }
+    .reveal-delay-1 { animation-delay: 0.08s; }
+    .reveal-delay-2 { animation-delay: 0.16s; }
+    .reveal-delay-3 { animation-delay: 0.24s; }
+    @keyframes revealUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .modal-panel { animation: modalIn 0.22s ease both; }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(18px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .pulse-live {
+      animation: pulseLive 1.6s ease-in-out infinite;
+    }
+    @keyframes pulseLive {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    .htmx-request .btn-spinner { display: inline-block !important; }
+    .btn-spinner { display: none; }
+    #game-canvas.game-stage {
+      position: relative;
+      overflow: hidden;
+    }
+    #game-canvas.game-stage canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    @media (max-width: 767px) {
+      #game-canvas.game-stage {
+        min-height: 70dvh !important;
+        height: 75dvh !important;
+      }
+    }
+    [x-cloak] { display: none !important; }
+  </style>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>

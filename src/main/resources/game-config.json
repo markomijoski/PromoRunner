@@ -1,0 +1,58 @@
+{
+  "baseScrollSpeed": 300,
+
+  "character": {
+    "runImageUrl": "/images/character/run.png",
+    "runFrameCount": 4,
+    "jumpImageUrl": "/images/character/jump.png",
+    "fallImageUrl": "/images/character/fall.png",
+    "slideImageUrl": "/images/character/slide.png"
+  },
+
+  "obstacles": [
+    {
+      "key": "obs_h_low_wall",
+      "type": "OBSTACLE_HORIZONTAL",
+      "imageUrl": "/images/obstacles/h_low_wall.png",
+      "active": true,
+      "minScoreToSpawn": 0,
+      "spawnWeight": 10,
+      "minUnits": 1,
+      "maxUnits": 3,
+      "positionType": "LOW"
+    },
+    {
+      "key": "obs_h_high_wall",
+      "type": "OBSTACLE_HORIZONTAL",
+      "imageUrl": "/images/obstacles/h_high_wall.png",
+      "active": true,
+      "minScoreToSpawn": 300,
+      "spawnWeight": 8,
+      "minUnits": 1,
+      "maxUnits": 2,
+      "positionType": "HIGH"
+    },
+    {
+      "key": "obs_v_wall",
+      "type": "OBSTACLE_VERTICAL",
+      "imageUrl": "/images/obstacles/v_wall.png",
+      "active": true,
+      "minScoreToSpawn": 0,
+      "spawnWeight": 10,
+      "minUnits": 1,
+      "maxUnits": 4,
+      "positionType": null
+    },
+    {
+      "key": "obs_h_low_wide",
+      "type": "OBSTACLE_HORIZONTAL",
+      "imageUrl": "/images/obstacles/h_low_wall.png",
+      "active": true,
+      "minScoreToSpawn": 600,
+      "spawnWeight": 5,
+      "minUnits": 3,
+      "maxUnits": 4,
+      "positionType": "LOW"
+    }
+  ]
+}

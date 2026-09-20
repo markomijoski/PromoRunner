@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: PromoRunner
+  profiles:
+    default: dev
+  autoconfigure:
+    exclude:
+      # Redis deferred to Phase 5 — dependency stays in pom, no auto-connect
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration
+      # Magic-link auth is custom; suppress generated in-memory default user
+      - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  thymeleaf:
+    check-template-location: false
+
+server:
+  servlet:
+    session:
+      timeout: 24h
+
+app:
+  base-url: http://localhost:8080
+  upload-dir: src/main/resources/static/images
+
+# Brand defaults — override per deployment without code changes
+brand:
+  name: AMSM Runner
+  campaign: "Останете фокусирани на патот"
+  primary-color: "#FFD200"
+  secondary-color: "#0A0A0A"
+  background-color: "#FFFFFF"
+  consent-label-text: "Се согласувам да добивам маркетинг пораки од АМСМ. Можам да се отпишам во секое време."
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/promorunner
+    username: postgres
+    password: PLACEHOLDER
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  mail:
+    host: localhost
+    port: 1025
+    from: noreply@localhost
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+  thymeleaf:
+    cache: false
+
+logging:
+  level:
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN

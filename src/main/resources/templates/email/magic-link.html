@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>АМСМ најава</title>
+</head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#FFFFFF;color:#0A0A0A;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#FFFFFF;">
+    <tr>
+      <td align="center" style="padding:24px;">
+        <table role="presentation" width="100%" style="max-width:480px;border:1px solid #E5E5E5;">
+          <tr>
+            <td style="background:#FFD200;padding:16px 20px;font-size:22px;font-weight:800;letter-spacing:0.02em;">
+              АМСМ
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 20px;">
+              <p style="margin:0 0 12px;font-size:16px;">Кликнете на линкот за најава:</p>
+              <p style="margin:0 0 20px;">
+                <a th:href="${verifyUrl}"
+                   style="display:inline-block;background:#0A0A0A;color:#FFD200;text-decoration:none;padding:12px 18px;font-weight:700;">
+                  Најави се
+                </a>
+              </p>
+              <p style="margin:0 0 8px;font-size:13px;color:#5C5C5C;word-break:break-all;">
+                Или копирајте: <span th:text="${verifyUrl}">link</span>
+              </p>
+              <p style="margin:16px 0 0;font-size:13px;color:#5C5C5C;">
+                Линкот истекува за <span th:text="${expiresMinutes}">15</span> минути и може да се користи еднаш.
+                Ако не сте побарале најава, игнорирајте ја оваа порака.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<section th:fragment="table (leaderboard, highlightUserId)"
+         class="scoreboard overflow-hidden rounded-2xl border border-black/10 bg-white"
+         th:attr="data-highlight=${highlightUserId}">
+  <header class="flex items-center justify-between border-b border-black/10 bg-amsm-ink px-4 py-3 text-white">
+    <h2 class="font-display text-xl font-bold uppercase tracking-wide">Ранг листа</h2>
+    <div class="flex items-center gap-2">
+      <span class="pulse-live inline-block h-1.5 w-1.5 rounded-full bg-amsm-yellow" aria-hidden="true"></span>
+      <span class="scoreboard-count text-xs text-white/70"
+            th:text="${leaderboard != null ? leaderboard.totalPlayers() + ' играчи' : '0 играчи'}">0</span>
+    </div>
+  </header>
+  <ol class="scoreboard-list divide-y divide-black/5">
+    <li th:if="${leaderboard == null or leaderboard.entries().isEmpty()}"
+        class="px-4 py-8 text-center text-sm text-amsm-muted">
+      Сè уште нема резултати. Бидете први!
+    </li>
+    <li th:each="entry : ${leaderboard.entries()}"
+        class="flex items-center gap-3 px-4 py-3"
+        th:classappend="${highlightUserId != null and entry.userId() == highlightUserId} ? 'bg-amsm-yellow/30' : ''">
+      <span class="font-display w-8 text-xl font-bold text-amsm-ink"
+            th:text="'#' + ${entry.rank()}">#1</span>
+      <span class="min-w-0 flex-1 truncate font-medium"
+            th:text="${entry.displayName()}">Player</span>
+      <span class="font-display text-lg font-bold tabular-nums"
+            th:text="${entry.score()}">0</span>
+    </li>
+  </ol>
+</section>
+</body>
+</html>

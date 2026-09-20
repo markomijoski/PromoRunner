@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Shared AMSM site header — same look on home, game, leaderboard -->
+<header th:fragment="bar (active)"
+        class="amsm-nav border-b border-black/10"
+        style="background:#FFFFFF;color:#0A0A0A">
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+    <a href="/" class="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight"
+       style="color:#0A0A0A;text-decoration:none">
+      <span class="inline-flex h-8 w-8 items-center justify-center rounded text-sm font-black"
+            style="background:#FFD200;color:#0A0A0A">А</span>
+      АМСМ
+    </a>
+
+    <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3 text-sm">
+      <a th:if="${active != 'leaderboard'}"
+         href="/leaderboard"
+         class="hidden sm:inline font-semibold"
+         style="color:#5C5C5C">Ранг листа</a>
+      <a th:if="${active == 'leaderboard'}"
+         href="/"
+         class="font-semibold"
+         style="color:#0A0A0A">← Дома</a>
+
+      <!-- Game-only: open mobile scoreboard (Alpine boardOpen on body) -->
+      <button th:if="${active == 'game'}"
+              type="button"
+              class="rounded-lg px-3 py-1.5 text-sm font-semibold md:hidden"
+              style="border:1px solid rgba(10,10,10,0.2);color:#0A0A0A;background:#fff"
+              @click="boardOpen = !boardOpen">
+        Ранг
+      </button>
+
+      <th:block th:if="${authenticated}">
+        <span class="hidden max-w-[10rem] truncate sm:inline"
+              style="color:#5C5C5C"
+              th:text="${currentUser != null ? currentUser.email : ''}">user</span>
+        <a th:if="${active == 'game'}"
+           href="/"
+           class="rounded-lg px-3 py-1.5 text-sm font-semibold"
+           style="color:#5C5C5C">Дома</a>
+        <form method="post" action="/auth/logout" class="inline">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <button type="submit"
+                  class="rounded-lg px-3 py-1.5 text-sm font-bold"
+                  style="background:#FFD200;color:#0A0A0A;border:0;cursor:pointer">
+            Одјава
+          </button>
+        </form>
+      </th:block>
+
+      <button th:unless="${authenticated}"
+              type="button"
+              class="font-semibold"
+              style="color:#0A0A0A;background:transparent;border:0;cursor:pointer"
+              @click="openLogin()">Најава</button>
+    </div>
+  </div>
+</header>
+</body>
+</html>
