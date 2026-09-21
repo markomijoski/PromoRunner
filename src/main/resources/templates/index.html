@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="mk" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(pageTitle=${brand.name})}"></head>
+<head th:replace="~{fragments/head :: head('Page Title')}">
+</head>
 <body class="road-lines"
       th:attr="data-open-modal=${openModal}, data-modal-error=${modalError}, data-authenticated=${authenticated}"
       x-data="amsmApp()"
@@ -18,7 +19,7 @@
 
     <div class="reveal reveal-delay-2 mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
       <button type="button"
-              class="inline-flex min-h-[3.25rem] items-center justify-center rounded-lg bg-amsm-yellow px-8 py-3.5 font-display text-xl font-extrabold uppercase tracking-wide text-amsm-ink shadow-sm transition hover:brightness-95 active:scale-[0.98]"
+              class="home-play-btn inline-flex min-h-[3.75rem] items-center justify-center rounded-xl bg-amsm-yellow px-10 py-4 font-display text-2xl font-extrabold uppercase tracking-[0.08em] text-amsm-ink sm:min-h-[4rem] sm:px-12 sm:text-3xl"
               th:attr="data-auth=${authenticated}"
               @click="onPlay($el.dataset.auth === 'true')">
         Играј

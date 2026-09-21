@@ -2,10 +2,13 @@
   'use strict';
 
   const ASSET_BASE = '/game/';
-  const MAP1_SRC = ASSET_BASE + 'map1.png';
-  const MAP2_SRC = ASSET_BASE + 'map2.png';
-  const MAP3_SRC = ASSET_BASE + 'map3.jpg';
-  const MAP4_SRC = ASSET_BASE + 'map4.jpg';
+  // roadLeft/roadRight = fractions of canvas width (inner asphalt edges)
+  const MAPS = [
+    { src: ASSET_BASE + 'map1.jpg', atScore: 0, roadLeft: 0.18, roadRight: 0.82 },
+    { src: ASSET_BASE + 'map2.png', atScore: 1000, roadLeft: 0.17, roadRight: 0.81 },
+    { src: ASSET_BASE + 'map3.jpg', atScore: 2000, roadLeft: 0.2, roadRight: 0.78 },
+    { src: ASSET_BASE + 'map4.jpg', atScore: 3000, roadLeft: 0.22, roadRight: 0.76 }
+  ];
   const PLAYER_SRC = ASSET_BASE + 'TheCar_amsm.png';
   const OBSTACLE_DEFS = [
     { src: ASSET_BASE + 'car1.png', w: 40, h: 70 },
@@ -24,9 +27,7 @@
   const SPAWN_INTERVAL_MIN = 45;
   const FALL_SPEED_START = 4;
   const FALL_SPEED_MAX = 7;
-  const MAP2_AT_SCORE = 1000;
-  const MAP3_AT_SCORE = 2000;
-  const MAP4_AT_SCORE = 3000;
+  const SPAWN_ROAD_PAD = 8;
   const DIFFICULTY_RAMP_FRAMES = 2000;
   const NEAR_MISS_PAD = 28;
   const NEAR_MISS_BONUS = 25;
@@ -63,6 +64,10 @@
   let player = null;
   let obstacles = [];
   let images = {};
+  let playerSprite = null;
+  let viewW = STAGE_DESIGN.w;
+  let viewH = STAGE_DESIGN.h;
+  let dpr = 1;
   let endRequested = false;
   let pendingStart = false;
   let overlayEls = {};
@@ -105,11 +110,15 @@
   }
 
   function loadAssets() {
-    const urls = [MAP1_SRC, MAP2_SRC, MAP3_SRC, MAP4_SRC, PLAYER_SRC].concat(
-      OBSTACLE_DEFS.map(function (o) {
-        return o.src;
-      })
-    );
+    const urls = MAPS.map(function (m) {
+      return m.src;
+    })
+      .concat([PLAYER_SRC])
+      .concat(
+        OBSTACLE_DEFS.map(function (o) {
+          return o.src;
+        })
+      );
     const unique = Array.from(new Set(urls));
     return Promise.all(
       unique.map(function (src) {
@@ -121,11 +130,47 @@
   }
 
   function scaleX(v) {
-    return (v / STAGE_DESIGN.w) * canvas.width;
+    return (v / STAGE_DESIGN.w) * viewW;
   }
 
   function scaleY(v) {
-    return (v / STAGE_DESIGN.h) * canvas.height;
+    return (v / STAGE_DESIGN.h) * viewH;
+  }
+
+  // Uniform width-based scale so the player keeps PC 40:70 proportions on tall mobile stages
+  function scalePlayer(v) {
+    return (v / STAGE_DESIGN.w) * viewW;
+  }
+
+  function applyCanvasQuality() {
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+  }
+
+  function bakePlayerSprite() {
+    const src = images[PLAYER_SRC];
+    if (!src || !viewW) return;
+    const drawW = scalePlayer(40);
+    const drawH = scalePlayer(70);
+    const targetW = Math.max(80, Math.round(drawW * dpr));
+    const targetH = Math.max(140, Math.round(drawH * dpr));
+    if (
+      playerSprite &&
+      playerSprite.width === targetW &&
+      playerSprite.height === targetH
+    ) {
+      return;
+    }
+    const off = document.createElement('canvas');
+    off.width = targetW;
+    off.height = targetH;
+    const offCtx = off.getContext('2d');
+    offCtx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in offCtx) offCtx.imageSmoothingQuality = 'high';
+    offCtx.drawImage(src, 0, 0, targetW, targetH);
+    playerSprite = off;
   }
 
   function difficultyT() {
@@ -142,15 +187,27 @@
     return FALL_SPEED_START + (FALL_SPEED_MAX - FALL_SPEED_START) * t;
   }
 
+  function currentMap() {
+    let map = MAPS[0];
+    for (let i = 0; i < MAPS.length; i++) {
+      if (state.score >= MAPS[i].atScore) map = MAPS[i];
+    }
+    return map;
+  }
+
   function currentMapSrc() {
-    if (state.score >= MAP4_AT_SCORE) return MAP4_SRC;
-    if (state.score >= MAP3_AT_SCORE) return MAP3_SRC;
-    if (state.score >= MAP2_AT_SCORE) return MAP2_SRC;
-    return MAP1_SRC;
+    return currentMap().src;
+  }
+
+  function roadBounds(entityW) {
+    const map = currentMap();
+    const minX = viewW * map.roadLeft;
+    const maxX = viewW * map.roadRight - entityW;
+    return { minX: minX, maxX: Math.max(minX, maxX) };
   }
 
   function playerMinY() {
-    return canvas.height * PLAYER_MIN_Y_FRAC;
+    return viewH * PLAYER_MIN_Y_FRAC;
   }
 
   function startSession() {
@@ -289,11 +346,12 @@
     player = {
       x: scaleX(200),
       y: scaleY(PLAYER_START_Y),
-      w: scaleX(40),
-      h: scaleY(70),
+      w: scalePlayer(40),
+      h: scalePlayer(70),
       speedX: 0,
       speedY: 0
     };
+    bakePlayerSprite();
     clampPlayer();
   }
 
@@ -371,14 +429,17 @@
 
   function spawnObstacle() {
     const def = OBSTACLE_DEFS[Math.floor(Math.random() * OBSTACLE_DEFS.length)];
-    const minX = scaleX(100);
-    const maxX = Math.max(minX + 1, canvas.width - scaleX(120));
+    const w = scaleX(def.w);
+    const bounds = roadBounds(w);
+    const pad = scaleX(SPAWN_ROAD_PAD);
+    const minX = bounds.minX + pad;
+    const maxX = Math.max(minX + 1, bounds.maxX - pad);
     const x = minX + Math.random() * (maxX - minX);
     obstacles.push({
       src: def.src,
       x: x,
       y: -scaleY(def.h),
-      w: scaleX(def.w),
+      w: w,
       h: scaleY(def.h),
       wasClose: false,
       scored: false
@@ -387,8 +448,9 @@
 
   function clampPlayer() {
     const minY = playerMinY();
-    player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
-    player.y = Math.max(minY, Math.min(canvas.height - player.h, player.y));
+    const bounds = roadBounds(player.w);
+    player.x = Math.max(bounds.minX, Math.min(bounds.maxX, player.x));
+    player.y = Math.max(minY, Math.min(viewH - player.h, player.y));
   }
 
   function updatePlaying() {
@@ -427,7 +489,7 @@
       }
     }
     obstacles = obstacles.filter(function (o) {
-      return o.y < canvas.height + o.h;
+      return o.y < viewH + o.h;
     });
 
     const moveX = scaleX(3);
@@ -449,12 +511,12 @@
     const map = images[currentMapSrc()];
     if (!map) {
       ctx.fillStyle = '#2a2a2a';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, viewW, viewH);
       return;
     }
-    const scroll = (state.frameNo * scaleY(8)) % canvas.height;
-    ctx.drawImage(map, 0, scroll - canvas.height, canvas.width, canvas.height);
-    ctx.drawImage(map, 0, scroll, canvas.width, canvas.height);
+    const scroll = (state.frameNo * scaleY(8)) % viewH;
+    ctx.drawImage(map, 0, scroll - viewH, viewW, viewH);
+    ctx.drawImage(map, 0, scroll, viewW, viewH);
   }
 
   function roundRect(x, y, w, h, r) {
@@ -497,7 +559,7 @@
     const contentW = Math.max(labelW, scoreW, streakW);
     const pillW = accentW + padX * 2 + contentW;
     const pillH = padY * 2 + labelSize + scoreSize + (showStreak ? streakSize + scaleY(6) : 0) + scaleY(4);
-    const pillX = (canvas.width - pillW) / 2;
+    const pillX = (viewW - pillW) / 2;
     const pillY = scaleY(16);
 
     roundRect(pillX, pillY, pillW, pillH, scaleX(10));
@@ -541,7 +603,7 @@
       ctx.fillStyle = 'rgba(255,210,0,' + alpha + ')';
       ctx.font = '700 ' + Math.max(18, Math.floor(scaleX(28))) + 'px "Fira Sans Condensed", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('ФОКУС!', canvas.width / 2, pillY + pillH + scaleY(28));
+      ctx.fillText('ФОКУС!', viewW / 2, pillY + pillH + scaleY(28));
     }
 
     ctx.restore();
@@ -551,8 +613,9 @@
     if (!ctx) return;
     drawRoadBackground();
 
-    if (player && images[PLAYER_SRC]) {
-      ctx.drawImage(images[PLAYER_SRC], player.x, player.y, player.w, player.h);
+    if (player) {
+      const sprite = playerSprite || images[PLAYER_SRC];
+      if (sprite) ctx.drawImage(sprite, player.x, player.y, player.w, player.h);
     }
 
     for (let i = 0; i < obstacles.length; i++) {
@@ -661,19 +724,24 @@
   }
 
   function resizeCanvas() {
-    if (!parentEl || !canvas) return;
+    if (!parentEl || !canvas || !ctx) return;
     const size = measureParent(parentEl);
-    const prevW = canvas.width || size.w;
-    const prevH = canvas.height || size.h;
-    canvas.width = size.w;
-    canvas.height = size.h;
+    const prevW = viewW || size.w;
+    const prevH = viewH || size.h;
+    viewW = size.w;
+    viewH = size.h;
+    dpr = Math.min(window.devicePixelRatio || 1, 3);
+    canvas.width = Math.max(1, Math.floor(viewW * dpr));
+    canvas.height = Math.max(1, Math.floor(viewH * dpr));
+    applyCanvasQuality();
     if (player && prevW > 0 && prevH > 0) {
-      player.x = (player.x / prevW) * size.w;
-      player.y = (player.y / prevH) * size.h;
-      player.w = scaleX(40);
-      player.h = scaleY(70);
+      player.x = (player.x / prevW) * viewW;
+      player.y = (player.y / prevH) * viewH;
+      player.w = scalePlayer(40);
+      player.h = scalePlayer(70);
       clampPlayer();
     }
+    bakePlayerSprite();
   }
 
   function bindInput() {
@@ -717,6 +785,7 @@
 
     loadAssets()
       .then(function () {
+        bakePlayerSprite();
         prepareWaiting();
         loopId = setInterval(tick, 20);
         window.__amsmGame = { canvas: canvas, getPhase: function () { return state.phase; } };

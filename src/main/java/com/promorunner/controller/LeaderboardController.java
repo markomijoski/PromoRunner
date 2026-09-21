@@ -20,8 +20,11 @@ public class LeaderboardController {
     }
 
     @GetMapping
-    public LeaderboardSnapshot topTen() {
-        return leaderboardService.getTopTen();
+    public LeaderboardSnapshot top() {
+        if (CurrentUser.isAuthenticated()) {
+            return leaderboardService.forViewer(CurrentUser.requireId());
+        }
+        return leaderboardService.getTop();
     }
 
     @GetMapping("/me")

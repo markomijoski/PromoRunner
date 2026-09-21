@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LeaderboardService {
 
+    public static final int TOP_LIMIT = 25;
+
     private final ScoreRepository scoreRepository;
     private final UserRepository userRepository;
 
@@ -26,8 +28,13 @@ public class LeaderboardService {
     }
 
     @Transactional(readOnly = true)
-    public LeaderboardSnapshot getTopTen() {
-        List<Score> scores = scoreRepository.findTopByOrderByBestScoreDesc(PageRequest.of(0, 10));
+    public LeaderboardSnapshot getTop() {
+        return getTop(TOP_LIMIT);
+    }
+
+    @Transactional(readOnly = true)
+    public LeaderboardSnapshot getTop(int limit) {
+        List<Score> scores = scoreRepository.findTopByOrderByBestScoreDesc(PageRequest.of(0, limit));
         long totalPlayers = scoreRepository.count();
 
         List<LeaderboardEntry> entries = new ArrayList<>(scores.size());
@@ -41,6 +48,29 @@ public class LeaderboardService {
             ));
         }
         return new LeaderboardSnapshot(entries, totalPlayers);
+    }
+
+    /**
+     * Top {@link #TOP_LIMIT} plus the viewer's own row appended when they have a score
+     * outside that list.
+     */
+    @Transactional(readOnly = true)
+    public LeaderboardSnapshot forViewer(Long userId) {
+        LeaderboardSnapshot top = getTop();
+        if (userId == null) {
+            return top;
+        }
+        boolean inList = top.entries().stream().anyMatch(e -> e.userId() == userId);
+        if (inList) {
+            return top;
+        }
+        Optional<LeaderboardEntry> mine = getMyRank(userId);
+        if (mine.isEmpty()) {
+            return top;
+        }
+        List<LeaderboardEntry> entries = new ArrayList<>(top.entries());
+        entries.add(mine.get());
+        return new LeaderboardSnapshot(entries, top.totalPlayers());
     }
 
     @Transactional(readOnly = true)
@@ -65,9 +95,6 @@ public class LeaderboardService {
     }
 
     static String displayName(User user) {
-        if (user.getDisplayName() != null && !user.getDisplayName().isBlank()) {
-            return user.getDisplayName();
-        }
         String email = user.getEmail();
         int at = email.indexOf('@');
         return at > 0 ? email.substring(0, at) : email;

@@ -5,7 +5,7 @@
          class="scoreboard overflow-hidden rounded-2xl border border-black/10 bg-white"
          th:attr="data-highlight=${highlightUserId}">
   <header class="flex items-center justify-between border-b border-black/10 bg-amsm-ink px-4 py-3 text-white">
-    <h2 class="font-display text-xl font-bold uppercase tracking-wide">Ранг листа</h2>
+    <h2 class="font-display text-xl font-bold uppercase tracking-wide text-amsm-ink">Ранг листа</h2>
     <div class="flex items-center gap-2">
       <span class="pulse-live inline-block h-1.5 w-1.5 rounded-full bg-amsm-yellow" aria-hidden="true"></span>
       <span class="scoreboard-count text-xs text-white/70"
@@ -20,7 +20,8 @@
     <li th:each="entry : ${leaderboard.entries()}"
         class="flex items-center gap-3 px-4 py-3"
         th:classappend="${highlightUserId != null and entry.userId() == highlightUserId} ? 'bg-amsm-yellow/30' : ''">
-      <span class="font-display w-8 text-xl font-bold text-amsm-ink"
+      <span class="font-display min-w-10 text-center text-xl font-bold text-amsm-ink"
+            th:classappend="${entry.rank() == 1} ? 'rank-outline-gold' : (${entry.rank() >= 2 and entry.rank() <= 4} ? 'rank-outline-silver' : (${entry.rank() >= 5 and entry.rank() <= 10} ? 'rank-outline-bronze' : ''))"
             th:text="'#' + ${entry.rank()}">#1</span>
       <span class="min-w-0 flex-1 truncate font-medium"
             th:text="${entry.displayName()}">Player</span>

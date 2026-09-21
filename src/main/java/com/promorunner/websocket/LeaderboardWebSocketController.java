@@ -23,14 +23,14 @@ public class LeaderboardWebSocketController {
 
     @SubscribeMapping("/leaderboard/ping")
     public LeaderboardUpdateMessage ping() {
-        return LeaderboardUpdateMessage.of(leaderboardService.getTopTen());
+        return LeaderboardUpdateMessage.of(leaderboardService.getTop());
     }
 
     @EventListener
     public void onScoreSubmitted(ScoreSubmittedEvent event) {
         messagingTemplate.convertAndSend(
                 "/topic/leaderboard",
-                LeaderboardUpdateMessage.of(leaderboardService.getTopTen())
+                LeaderboardUpdateMessage.of(leaderboardService.getTop())
         );
     }
 }

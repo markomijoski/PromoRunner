@@ -83,7 +83,7 @@ class ApiControllerTest {
 
     @Test
     void leaderboardReturnsSnapshot() throws Exception {
-        when(leaderboardService.getTopTen())
+        when(leaderboardService.forViewer(1L))
                 .thenReturn(new LeaderboardSnapshot(List.of(), 0));
 
         mockMvc.perform(get("/api/leaderboard").with(user(player)))

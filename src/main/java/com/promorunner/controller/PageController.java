@@ -53,7 +53,6 @@ public class PageController {
             Model model,
             @RequestParam(value = "modal", required = false) String modal,
             @RequestParam(value = "error", required = false) String error) {
-        model.addAttribute("leaderboard", leaderboardService.getTopTen());
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthed = auth != null && auth.getPrincipal() instanceof UserPrincipal;
         if (isAuthed && "login".equals(modal)) {
@@ -62,7 +61,11 @@ public class PageController {
         model.addAttribute("openModal", modal);
         model.addAttribute("modalError", error);
         if (isAuthed) {
-            model.addAttribute("currentUser", auth.getPrincipal());
+            UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+            model.addAttribute("currentUser", principal);
+            model.addAttribute("leaderboard", leaderboardService.forViewer(principal.getId()));
+        } else {
+            model.addAttribute("leaderboard", leaderboardService.getTop());
         }
         return "index";
     }
@@ -98,17 +101,19 @@ public class PageController {
                 new GameConfigDto(gameConfigService.getConfig(), playsRemaining, principal.getId())
         );
         model.addAttribute("currentUser", principal);
-        model.addAttribute("leaderboard", leaderboardService.getTopTen());
+        model.addAttribute("leaderboard", leaderboardService.forViewer(principal.getId()));
         model.addAttribute("openModal", modal);
         return "game";
     }
 
     @GetMapping("/leaderboard")
     public String leaderboard(Model model) {
-        model.addAttribute("leaderboard", leaderboardService.getTopTen());
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof UserPrincipal principal) {
             model.addAttribute("currentUser", principal);
+            model.addAttribute("leaderboard", leaderboardService.forViewer(principal.getId()));
+        } else {
+            model.addAttribute("leaderboard", leaderboardService.getTop());
         }
         return "leaderboard";
     }
