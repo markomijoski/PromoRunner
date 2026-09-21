@@ -2,7 +2,7 @@
 <html lang="mk" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/head :: head(pageTitle=${brand.name})}"></head>
 <body class="road-lines"
-      th:attr="data-open-modal=${openModal}, data-modal-error=${modalError}"
+      th:attr="data-open-modal=${openModal}, data-modal-error=${modalError}, data-authenticated=${authenticated}"
       x-data="amsmApp()"
       x-init="initFromQuery()">
 

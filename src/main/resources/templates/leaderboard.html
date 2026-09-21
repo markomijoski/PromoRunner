@@ -2,6 +2,7 @@
 <html lang="mk" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/head :: head(pageTitle=${brand.name + ' · Ранг'})}"></head>
 <body class="road-lines"
+      th:attr="data-authenticated=${authenticated}"
       x-data="amsmApp()">
 
 <div th:replace="~{fragments/nav :: bar('leaderboard')}"></div>

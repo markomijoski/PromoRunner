@@ -4,8 +4,6 @@ import com.promorunner.dto.AnalyticsSummaryDto;
 import com.promorunner.dto.AssetUploadResponse;
 import com.promorunner.dto.LeadExportDto;
 import com.promorunner.model.GameConfig;
-import com.promorunner.model.User;
-import com.promorunner.repository.MarketingConsentRepository;
 import com.promorunner.repository.ScoreRepository;
 import com.promorunner.repository.UserRepository;
 import java.io.IOException;
@@ -23,19 +21,16 @@ import org.springframework.web.multipart.MultipartFile;
 public class AdminService {
 
     private final GameConfigService gameConfigService;
-    private final MarketingConsentRepository marketingConsentRepository;
     private final UserRepository userRepository;
     private final ScoreRepository scoreRepository;
     private final Path uploadRoot;
 
     public AdminService(
             GameConfigService gameConfigService,
-            MarketingConsentRepository marketingConsentRepository,
             UserRepository userRepository,
             ScoreRepository scoreRepository,
             @Value("${app.upload-dir:src/main/resources/static/images}") String uploadDir) {
         this.gameConfigService = gameConfigService;
-        this.marketingConsentRepository = marketingConsentRepository;
         this.userRepository = userRepository;
         this.scoreRepository = scoreRepository;
         this.uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
@@ -66,30 +61,22 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public List<LeadExportDto> exportLeads() {
-        List<User> leads = marketingConsentRepository.findActiveLeadUsers();
-        return leads.stream()
-                .map(user -> {
-                    var consent = marketingConsentRepository
-                            .findFirstByUserIdOrderByConsentedAtDescIdDesc(user.getId())
-                            .orElse(null);
-                    return new LeadExportDto(
-                            user.getId(),
-                            user.getEmail(),
-                            user.getDisplayName(),
-                            consent != null ? consent.getConsentedAt() : null
-                    );
-                })
+        return userRepository.findByMarketingConsentTrue().stream()
+                .map(user -> new LeadExportDto(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getDisplayName()
+                ))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public String exportLeadsCsv() {
-        StringBuilder sb = new StringBuilder("userId,email,displayName,consentedAt\n");
+        StringBuilder sb = new StringBuilder("userId,email,displayName\n");
         for (LeadExportDto lead : exportLeads()) {
             sb.append(lead.userId()).append(',')
                     .append(escapeCsv(lead.email())).append(',')
-                    .append(escapeCsv(lead.displayName() == null ? "" : lead.displayName())).append(',')
-                    .append(lead.consentedAt() == null ? "" : lead.consentedAt()).append('\n');
+                    .append(escapeCsv(lead.displayName() == null ? "" : lead.displayName())).append('\n');
         }
         return sb.toString();
     }
@@ -98,7 +85,7 @@ public class AdminService {
     public AnalyticsSummaryDto analytics() {
         return new AnalyticsSummaryDto(
                 userRepository.count(),
-                marketingConsentRepository.countActiveLeads(),
+                userRepository.countByMarketingConsentTrue(),
                 scoreRepository.averageBestScore(),
                 scoreRepository.sumTotalPlays()
         );

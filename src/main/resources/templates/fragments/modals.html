@@ -19,7 +19,9 @@
             aria-label="Затвори">&times;</button>
 
     <div x-show="modal === 'login'">
-      <div th:replace="~{fragments/modals :: login-form}"></div>
+      <div id="login-form-slot">
+        <div th:replace="~{fragments/modals :: login-form}"></div>
+      </div>
     </div>
     <div x-show="modal === 'check-email'">
       <div id="check-email-slot">
@@ -39,21 +41,36 @@
      class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
     Линкот е невалиден или истечен. Побарајте нов.
   </p>
+  <p th:if="${modalError == 'rate_limit'}"
+     class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+    Премногу обиди. Почекајте неколку минути и обидете се повторно.
+  </p>
   <form class="mt-6 space-y-4"
         hx-post="/auth/login"
         hx-target="#check-email-slot"
         hx-swap="innerHTML"
-        data-on-htmx:after-request="if (event.detail.successful) { modal = 'check-email' }"
-        @htmx:after-request="if (event.detail.successful) { modal = 'check-email' }">
+        @htmx:after-request="
+          if (!$event.detail.successful) return;
+          if ($event.detail.xhr.getResponseHeader('HX-Redirect')) return;
+          const retarget = $event.detail.xhr.getResponseHeader('HX-Retarget');
+          if (retarget === '#login-form-slot') return;
+          try {
+            const f = $event.detail.elt.querySelector('[name=email]');
+            if (f && f.value) localStorage.setItem('amsm.email', f.value.trim());
+          } catch (e) {}
+          modal = 'check-email';
+        ">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <label class="block text-sm font-medium text-amsm-ink">
       Е-пошта
       <input type="email"
+             id="login-email"
              name="email"
              required
              autocomplete="email"
              inputmode="email"
              placeholder="vie@email.com"
+             th:value="${loginEmail}"
              class="mt-1.5 w-full rounded-lg border border-black/15 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-amsm-yellow"/>
     </label>
     <button type="submit"

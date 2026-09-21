@@ -6,14 +6,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.promorunner.exception.UserNotFoundException;
-import com.promorunner.model.MarketingConsent;
 import com.promorunner.model.User;
-import com.promorunner.repository.MarketingConsentRepository;
 import com.promorunner.repository.UserRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,8 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ConsentServiceTest {
 
-    @Mock
-    private MarketingConsentRepository marketingConsentRepository;
     @Mock
     private UserRepository userRepository;
 
@@ -34,12 +29,10 @@ class ConsentServiceTest {
         User user = userWithPlays(1L, 3);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
-        consentService.recordConsent(1L, true, "JUnit");
+        consentService.recordConsent(1L, true);
 
+        assertThat(user.isMarketingConsent()).isTrue();
         assertThat(user.getFreePlaysRemaining()).isNull();
-        ArgumentCaptor<MarketingConsent> captor = ArgumentCaptor.forClass(MarketingConsent.class);
-        verify(marketingConsentRepository).save(captor.capture());
-        assertThat(captor.getValue().isConsented()).isTrue();
         verify(userRepository).save(user);
     }
 
@@ -48,33 +41,31 @@ class ConsentServiceTest {
         User user = userWithPlays(1L, 3);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
-        consentService.recordConsent(1L, false, null);
+        consentService.recordConsent(1L, false);
 
+        assertThat(user.isMarketingConsent()).isFalse();
         assertThat(user.getFreePlaysRemaining()).isEqualTo(3);
-        ArgumentCaptor<MarketingConsent> captor = ArgumentCaptor.forClass(MarketingConsent.class);
-        verify(marketingConsentRepository).save(captor.capture());
-        assertThat(captor.getValue().isConsented()).isFalse();
+        verify(userRepository).save(user);
     }
 
     @Test
     void withdrawConsentDoesNotRestorePlays() {
         User user = userWithPlays(2L, null);
+        user.setMarketingConsent(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
 
         consentService.withdrawConsent(2L);
 
+        assertThat(user.isMarketingConsent()).isFalse();
         assertThat(user.getFreePlaysRemaining()).isNull();
-        ArgumentCaptor<MarketingConsent> captor = ArgumentCaptor.forClass(MarketingConsent.class);
-        verify(marketingConsentRepository).save(captor.capture());
-        assertThat(captor.getValue().isConsented()).isFalse();
-        assertThat(captor.getValue().getWithdrawnAt()).isNotNull();
+        verify(userRepository).save(user);
     }
 
     @Test
     void recordConsentThrowsWhenUserMissing() {
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> consentService.recordConsent(99L, true, null))
+        assertThatThrownBy(() -> consentService.recordConsent(99L, true))
                 .isInstanceOf(UserNotFoundException.class);
     }
 

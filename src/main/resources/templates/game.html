@@ -2,17 +2,17 @@
 <html lang="mk" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/head :: head(pageTitle=${brand.name})}"></head>
 <body class="bg-[#F7F7F7]"
-      th:attr="data-open-modal=${openModal}"
+      th:attr="data-open-modal=${openModal}, data-authenticated=${authenticated}"
       x-data="amsmApp()"
       x-init="initFromQuery()">
 
 <div th:replace="~{fragments/nav :: bar('game')}"></div>
 
-<main class="mx-auto grid max-w-6xl gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[1fr_280px] lg:gap-6 lg:py-6">
+<main class="mx-auto grid max-w-6xl gap-4 px-4 py-2 sm:px-6 lg:grid-cols-[1fr_280px] lg:gap-6 lg:py-3">
   <section class="relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
     <div id="game-canvas"
          class="game-stage w-full bg-[#e8e8e8]"
-         style="min-height:420px;height:min(70dvh,720px)"></div>
+         style="min-height:520px;height:min(88dvh,960px)"></div>
     <p class="border-t border-black/5 px-4 py-2 text-center text-xs sm:text-sm" style="color:#5C5C5C">
       Стрелки / WASD за возење · Space / ↑ или допир за старт · мобилен: допрете лево/десно/горе/долу
     </p>

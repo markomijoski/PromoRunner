@@ -1,10 +1,12 @@
 package com.promorunner.controller;
 
 import com.promorunner.exception.InvalidMagicLinkException;
+import com.promorunner.security.CurrentUser;
 import com.promorunner.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Controller;
@@ -27,7 +29,14 @@ public class AuthController {
     }
 
     @PostMapping(value = "/login", produces = MediaType.TEXT_HTML_VALUE)
-    public String login(@RequestParam("email") String email, Model model) {
+    public Object login(
+            @RequestParam("email") String email,
+            Model model,
+            HttpServletResponse response) {
+        if (CurrentUser.isAuthenticated()) {
+            response.setHeader("HX-Redirect", "/game");
+            return ResponseEntity.ok().build();
+        }
         authService.requestMagicLink(email);
         model.addAttribute("email", email.trim());
         return "fragments/modals :: check-email";
@@ -38,16 +47,16 @@ public class AuthController {
             @RequestParam(value = "token", required = false) String token,
             HttpServletRequest request,
             HttpServletResponse response) {
+        if (CurrentUser.isAuthenticated()) {
+            return "redirect:/game";
+        }
         try {
-            String redirect = authService.verifyToken(token);
+            authService.verifyToken(token);
             securityContextRepository.saveContext(
                     SecurityContextHolder.getContext(),
                     request,
                     response
             );
-            if ("/consent".equals(redirect)) {
-                return "redirect:/game?modal=consent";
-            }
             return "redirect:/game";
         } catch (InvalidMagicLinkException ex) {
             return "redirect:/?modal=login&error=invalid_token";

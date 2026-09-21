@@ -2,7 +2,6 @@ package com.promorunner.controller;
 
 import com.promorunner.security.CurrentUser;
 import com.promorunner.service.ConsentService;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,16 +20,11 @@ public class ConsentController {
     @PostMapping
     public String submit(
             @RequestParam(value = "action", required = false) String action,
-            @RequestParam(value = "consented", required = false) String consented,
-            HttpServletRequest request) {
+            @RequestParam(value = "consented", required = false) String consented) {
         // "skip" always declines; "consent" requires the checkbox
         boolean optedIn = "consent".equalsIgnoreCase(action)
                 && "true".equalsIgnoreCase(consented);
-        consentService.recordConsent(
-                CurrentUser.requireId(),
-                optedIn,
-                request.getHeader("User-Agent")
-        );
+        consentService.recordConsent(CurrentUser.requireId(), optedIn);
         return "redirect:/game";
     }
 

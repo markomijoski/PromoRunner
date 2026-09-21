@@ -22,7 +22,6 @@
           <th class="px-4 py-3">ID</th>
           <th class="px-4 py-3">Email</th>
           <th class="px-4 py-3">Name</th>
-          <th class="px-4 py-3">Consented</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -35,13 +34,13 @@
     .then(rows => {
       const tb = document.querySelector('#leads-table tbody');
       if (!Array.isArray(rows) || !rows.length) {
-        tb.innerHTML = '<tr><td class="px-4 py-6 text-amsm-muted" colspan="4">Нема leads.</td></tr>';
+        tb.innerHTML = '<tr><td class="px-4 py-6 text-amsm-muted" colspan="3">Нема leads.</td></tr>';
         return;
       }
       rows.forEach(row => {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-black/5';
-        const cells = [row.userId, row.email, row.displayName || '', row.consentedAt || ''];
+        const cells = [row.userId, row.email, row.displayName || ''];
         cells.forEach(val => {
           const td = document.createElement('td');
           td.className = 'px-4 py-2';

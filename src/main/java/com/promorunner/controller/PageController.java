@@ -54,17 +54,24 @@ public class PageController {
             @RequestParam(value = "modal", required = false) String modal,
             @RequestParam(value = "error", required = false) String error) {
         model.addAttribute("leaderboard", leaderboardService.getTopTen());
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthed = auth != null && auth.getPrincipal() instanceof UserPrincipal;
+        if (isAuthed && "login".equals(modal)) {
+            return "redirect:/game";
+        }
         model.addAttribute("openModal", modal);
         model.addAttribute("modalError", error);
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof UserPrincipal principal) {
-            model.addAttribute("currentUser", principal);
+        if (isAuthed) {
+            model.addAttribute("currentUser", auth.getPrincipal());
         }
         return "index";
     }
 
     @GetMapping("/login")
     public String loginRedirect() {
+        if (authenticated()) {
+            return "redirect:/game";
+        }
         return "redirect:/?modal=login";
     }
 

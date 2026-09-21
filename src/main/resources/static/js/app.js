@@ -3,17 +3,45 @@ window.amsmApp = function amsmApp() {
     modal: null,
     boardOpen: false,
     initFromQuery() {
+      this.prefillLoginEmail();
+      const authenticated = document.body.dataset.authenticated === 'true';
       const open = document.body.dataset.openModal;
       const err = document.body.dataset.modalError;
+
+      if (authenticated && open === 'login') {
+        window.location.replace('/game');
+        return;
+      }
+
       if (open === 'login' || open === 'check-email' || open === 'consent') {
         this.modal = open;
       }
       if (err === 'invalid_token') {
         this.modal = 'login';
       }
+      if (this.modal === 'login') {
+        this.$nextTick(() => this.prefillLoginEmail());
+      }
+    },
+    prefillLoginEmail() {
+      try {
+        const saved = localStorage.getItem('amsm.email');
+        if (!saved) return;
+        const input = document.getElementById('login-email');
+        if (input && !input.value) {
+          input.value = saved;
+        }
+      } catch (e) {
+        /* ignore */
+      }
     },
     openLogin() {
+      if (document.body.dataset.authenticated === 'true') {
+        window.location.href = '/game';
+        return;
+      }
       this.modal = 'login';
+      this.$nextTick(() => this.prefillLoginEmail());
     },
     openConsent() {
       this.modal = 'consent';
@@ -51,4 +79,18 @@ window.amsmFetch = async function amsmFetch(url, options = {}) {
 
 document.addEventListener('htmx:configRequest', function (event) {
   event.detail.headers[getCsrfHeader()] = getCsrfToken();
+});
+
+document.addEventListener('htmx:afterSwap', function (event) {
+  if (event.detail.target && event.detail.target.id === 'login-form-slot') {
+    try {
+      const saved = localStorage.getItem('amsm.email');
+      const input = document.getElementById('login-email');
+      if (input && saved && !input.value) {
+        input.value = saved;
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }
 });

@@ -41,6 +41,9 @@ public class User {
     @Column(name = "free_plays_remaining")
     private Integer freePlaysRemaining = 3;
 
+    @Column(name = "marketing_consent", nullable = false)
+    private boolean marketingConsent = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role = UserRole.PLAYER;

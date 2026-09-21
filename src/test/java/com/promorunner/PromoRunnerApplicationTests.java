@@ -2,7 +2,6 @@ package com.promorunner;
 
 import com.promorunner.repository.GameSessionRepository;
 import com.promorunner.repository.MagicLinkTokenRepository;
-import com.promorunner.repository.MarketingConsentRepository;
 import com.promorunner.repository.ScoreRepository;
 import com.promorunner.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -19,8 +18,6 @@ class PromoRunnerApplicationTests {
     private UserRepository userRepository;
     @MockitoBean
     private MagicLinkTokenRepository magicLinkTokenRepository;
-    @MockitoBean
-    private MarketingConsentRepository marketingConsentRepository;
     @MockitoBean
     private GameSessionRepository gameSessionRepository;
     @MockitoBean

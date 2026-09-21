@@ -14,7 +14,6 @@ import com.promorunner.exception.InvalidMagicLinkException;
 import com.promorunner.model.MagicLinkToken;
 import com.promorunner.model.User;
 import com.promorunner.repository.MagicLinkTokenRepository;
-import com.promorunner.repository.MarketingConsentRepository;
 import com.promorunner.repository.UserRepository;
 import com.promorunner.security.UserPrincipal;
 import jakarta.mail.Session;
@@ -43,8 +42,6 @@ class AuthServiceTest {
     @Mock
     private MagicLinkTokenRepository magicLinkTokenRepository;
     @Mock
-    private MarketingConsentRepository marketingConsentRepository;
-    @Mock
     private JavaMailSender mailSender;
     @Mock
     private TemplateEngine templateEngine;
@@ -62,7 +59,6 @@ class AuthServiceTest {
         authService = new AuthService(
                 userRepository,
                 magicLinkTokenRepository,
-                marketingConsentRepository,
                 mailSender,
                 templateEngine,
                 appProperties,
@@ -117,7 +113,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void verifyTokenHappyPathRedirectsToConsentWhenNoConsentRecord() {
+    void verifyTokenHappyPathRedirectsToGame() {
         User user = new User();
         user.setId(3L);
         user.setEmail("a@b.com");
@@ -126,31 +122,15 @@ class AuthServiceTest {
         String raw = "raw-token-value";
         when(magicLinkTokenRepository.findByTokenHash(AuthService.sha256Hex(raw)))
                 .thenReturn(Optional.of(token));
-        when(marketingConsentRepository.existsByUserId(3L)).thenReturn(false);
 
         String redirect = authService.verifyToken(raw);
 
-        assertThat(redirect).isEqualTo("/consent");
+        assertThat(redirect).isEqualTo("/game");
         assertThat(user.isEmailVerified()).isTrue();
         assertThat(token.getUsedAt()).isNotNull();
         assertThat(SecurityContextHolder.getContext().getAuthentication().getPrincipal())
                 .isInstanceOf(UserPrincipal.class);
         verify(userRepository).save(user);
-    }
-
-    @Test
-    void verifyTokenRedirectsToGameWhenConsentExists() {
-        User user = new User();
-        user.setId(3L);
-        user.setEmail("a@b.com");
-        MagicLinkToken token = validToken(user);
-
-        String raw = "another-token";
-        when(magicLinkTokenRepository.findByTokenHash(AuthService.sha256Hex(raw)))
-                .thenReturn(Optional.of(token));
-        when(marketingConsentRepository.existsByUserId(3L)).thenReturn(true);
-
-        assertThat(authService.verifyToken(raw)).isEqualTo("/game");
     }
 
     @Test

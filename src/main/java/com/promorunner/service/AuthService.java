@@ -5,7 +5,6 @@ import com.promorunner.exception.InvalidMagicLinkException;
 import com.promorunner.model.MagicLinkToken;
 import com.promorunner.model.User;
 import com.promorunner.repository.MagicLinkTokenRepository;
-import com.promorunner.repository.MarketingConsentRepository;
 import com.promorunner.repository.UserRepository;
 import com.promorunner.security.UserPrincipal;
 import jakarta.mail.MessagingException;
@@ -36,7 +35,6 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final MagicLinkTokenRepository magicLinkTokenRepository;
-    private final MarketingConsentRepository marketingConsentRepository;
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
     private final AppProperties appProperties;
@@ -46,7 +44,6 @@ public class AuthService {
     public AuthService(
             UserRepository userRepository,
             MagicLinkTokenRepository magicLinkTokenRepository,
-            MarketingConsentRepository marketingConsentRepository,
             JavaMailSender mailSender,
             TemplateEngine templateEngine,
             AppProperties appProperties,
@@ -54,7 +51,6 @@ public class AuthService {
             @Value("${spring.mail.from:noreply@localhost}") String mailFrom) {
         this.userRepository = userRepository;
         this.magicLinkTokenRepository = magicLinkTokenRepository;
-        this.marketingConsentRepository = marketingConsentRepository;
         this.mailSender = mailSender;
         this.templateEngine = templateEngine;
         this.appProperties = appProperties;
@@ -117,8 +113,7 @@ public class AuthService {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
 
-        boolean hasConsent = marketingConsentRepository.existsByUserId(user.getId());
-        return hasConsent ? "/game" : "/consent";
+        return "/game";
     }
 
     private User createUser(String email) {
