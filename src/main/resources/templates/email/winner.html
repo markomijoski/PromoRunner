@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Честитки — победник</title>
+</head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#FFFFFF;color:#0A0A0A;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#FFFFFF;">
+    <tr>
+      <td align="center" style="padding:24px;">
+        <table role="presentation" width="100%" style="max-width:480px;border:1px solid #E5E5E5;">
+          <tr>
+            <td style="background:#FFD200;padding:16px 20px;font-size:22px;font-weight:800;letter-spacing:0.02em;">
+              АМСМ Runner
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 20px;">
+              <p style="margin:0 0 12px;font-size:20px;font-weight:800;">
+                Честитки, <span th:text="${username}">играч</span>!
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.45;">
+                Натпреварот заврши и вие освоивте
+                <strong th:text="${placeLabel}">1. место</strong>
+                на ранг листата.
+              </p>
+              <p style="margin:0 0 8px;font-size:13px;color:#5C5C5C;text-transform:uppercase;letter-spacing:0.06em;">
+                Вашата награда
+              </p>
+              <p style="margin:0 0 20px;padding:14px 16px;background:#FFD200;font-size:18px;font-weight:800;"
+                 th:text="${prizeName}">
+                Награда
+              </p>
+              <p style="margin:0;font-size:13px;color:#5C5C5C;line-height:1.45;">
+                АМСМ ќе ве контактира наскоро за преземање на наградата.
+                Чувајте ја оваа порака за потврда.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,18 +1,17 @@
 package com.promorunner.controller;
 
-import com.promorunner.exception.InvalidMagicLinkException;
-import com.promorunner.exception.NoPlaysRemainingException;
+import com.promorunner.exception.InvalidResetTokenException;
+import com.promorunner.exception.CampaignClosedException;
 import com.promorunner.exception.SessionAlreadyCompletedException;
 import com.promorunner.exception.SessionNotFoundException;
-import com.promorunner.exception.TooManyRequestsException;
 import com.promorunner.exception.UserNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -23,27 +22,63 @@ import org.springframework.web.servlet.ModelAndView;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(TooManyRequestsException.class)
-    public Object tooManyRequests(
-            TooManyRequestsException ex,
+    @ExceptionHandler({IllegalArgumentException.class, BadCredentialsException.class})
+    public Object badArgument(
+            RuntimeException ex,
             HttpServletRequest request,
             HttpServletResponse response) {
         if ("true".equalsIgnoreCase(request.getHeader("HX-Request"))) {
-            // 200 so HTMX swaps; HX-Retarget puts the form back in the login slot
-            response.setHeader("HX-Retarget", "#login-form-slot");
-            response.setHeader("HX-Reswap", "innerHTML");
-            ModelAndView mav = new ModelAndView("fragments/modals :: login-form");
-            mav.setStatus(HttpStatus.OK);
-            mav.addObject("modalError", "rate_limit");
-            String email = request.getParameter("email");
-            if (email != null && !email.isBlank()) {
-                mav.addObject("loginEmail", email.trim());
+            String path = request.getRequestURI();
+            if (path != null && path.contains("/auth/username")) {
+                response.setHeader("HX-Retarget", "#username-form-slot");
+                response.setHeader("HX-Reswap", "innerHTML");
+                ModelAndView mav = new ModelAndView("fragments/modals :: username-form");
+                mav.setStatus(HttpStatus.OK);
+                mav.addObject("usernameError", ex.getMessage());
+                return mav;
             }
-            return mav;
+            return authFormError(request, response, "validation", ex.getMessage());
         }
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .contentType(MediaType.APPLICATION_JSON)
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", ex.getMessage()));
+    }
+
+    private ModelAndView authFormError(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            String modalError,
+            String validationMessage) {
+        String path = request.getRequestURI();
+        String fragment;
+        String slot;
+        if (path != null && path.contains("/auth/register")) {
+            fragment = "fragments/modals :: register-form";
+            slot = "#register-form-slot";
+        } else if (path != null && path.contains("/auth/forgot")) {
+            fragment = "fragments/modals :: forgot-form";
+            slot = "#forgot-form-slot";
+        } else {
+            fragment = "fragments/modals :: login-form";
+            slot = "#login-form-slot";
+        }
+
+        response.setHeader("HX-Retarget", slot);
+        response.setHeader("HX-Reswap", "innerHTML");
+        ModelAndView mav = new ModelAndView(fragment);
+        mav.setStatus(HttpStatus.OK);
+        mav.addObject("modalError", modalError);
+        if (validationMessage != null) {
+            mav.addObject("validationError", validationMessage);
+        }
+        String email = request.getParameter("email");
+        if (email != null && !email.isBlank()) {
+            mav.addObject("loginEmail", email.trim());
+        }
+        String username = request.getParameter("username");
+        if (username != null && !username.isBlank()) {
+            mav.addObject("loginUsername", username.trim());
+        }
+        return mav;
     }
 
     @ExceptionHandler({
@@ -58,20 +93,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             SessionAlreadyCompletedException.class,
-            InvalidMagicLinkException.class,
-            IllegalArgumentException.class
+            InvalidResetTokenException.class,
+            CampaignClosedException.class
     })
     @ResponseBody
     public ResponseEntity<Map<String, String>> badRequest(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", ex.getMessage()));
-    }
-
-    @ExceptionHandler(NoPlaysRemainingException.class)
-    @ResponseBody
-    public ResponseEntity<Map<String, String>> noPlays(NoPlaysRemainingException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(Map.of("error", ex.getMessage(), "reason", "CONSENT_REQUIRED"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

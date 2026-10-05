@@ -12,32 +12,30 @@
   <section class="relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
     <div id="game-canvas"
          class="game-stage w-full bg-[#e8e8e8]"
-         style="min-height:520px;height:min(88dvh,960px)"></div>
-    <p class="border-t border-black/5 px-4 py-2 text-center text-xs sm:text-sm" style="color:#5C5C5C">
-      Стрелки / WASD за возење · Space / ↑ или допир за старт · мобилен: допрете лево/десно/горе/долу
+         style="min-height:min(520px, calc(100dvh - 10rem));height:min(88dvh, calc(100dvh - 8rem), 960px)"></div>
+    <p class="border-t border-black/5 px-4 py-2 text-center text-xs text-amsm-muted sm:text-sm">
+      <span class="sm:hidden">Допир: лево/десно/горе · допрете за старт</span>
+      <span class="hidden sm:inline">Стрелки / WASD · Space / ↑ или допир за старт · мобилен: лево/десно/горе/долу</span>
     </p>
     <div id="gate-overlay"
          class="absolute inset-0 z-20 hidden flex flex-col items-center justify-center p-6 text-center text-white"
          style="background:rgba(10,10,10,0.88)">
       <p class="font-display text-2xl font-bold">Нема преостанати игри</p>
-      <p class="mt-2 max-w-sm text-sm" style="color:rgba(255,255,255,0.8)">
+      <p class="mt-2 max-w-sm text-sm text-white/80">
         Дајте согласност за маркетинг и продолжете неограничено.
       </p>
       <button type="button"
-              class="mt-5 rounded-lg px-6 py-3 font-display font-bold uppercase"
-              style="background:#FFD200;color:#0A0A0A"
+              class="btn-primary btn-lg mt-5"
               @click="openConsent()">
         Отвори согласност
       </button>
     </div>
     <div id="game-error"
-         class="absolute inset-0 z-20 hidden flex flex-col items-center justify-center p-6 text-center"
-         style="background:#F7F7F7">
-      <p class="font-display text-xl font-bold" style="color:#0A0A0A">Не може да се стартува играта</p>
-      <p id="game-error-msg" class="mt-2 text-sm" style="color:#5C5C5C"></p>
+         class="absolute inset-0 z-20 hidden flex flex-col items-center justify-center bg-amsm-soft p-6 text-center">
+      <p class="font-display text-xl font-bold text-amsm-ink">Не може да се стартува играта</p>
+      <p id="game-error-msg" class="mt-2 text-sm text-amsm-muted"></p>
       <button type="button"
-              class="mt-5 rounded-lg px-6 py-3 font-display font-bold uppercase"
-              style="background:#FFD200;color:#0A0A0A"
+              class="btn-primary btn-lg mt-5"
               onclick="location.reload()">
         Обиди се повторно
       </button>
@@ -68,5 +66,11 @@
 <script th:src="@{/js/game.js(v=${#dates.createNow().getTime()})}"></script>
 
 <div th:replace="~{fragments/modals :: shell}"></div>
+
+<footer class="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-amsm-muted">
+  <a href="/privacy" class="hover:text-amsm-ink">Приватност</a>
+  ·
+  <a href="/terms" class="hover:text-amsm-ink">Услови</a>
+</footer>
 </body>
 </html>

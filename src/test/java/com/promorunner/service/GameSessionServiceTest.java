@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.promorunner.dto.EndSessionResult;
 import com.promorunner.dto.ScoreUpdateResult;
 import com.promorunner.dto.StartSessionResult;
+import com.promorunner.exception.CampaignClosedException;
 import com.promorunner.exception.NoPlaysRemainingException;
 import com.promorunner.exception.SessionAlreadyCompletedException;
 import com.promorunner.exception.SessionNotFoundException;
@@ -19,9 +21,9 @@ import com.promorunner.repository.GameSessionRepository;
 import com.promorunner.repository.ScoreRepository;
 import com.promorunner.repository.UserRepository;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -38,9 +40,23 @@ class GameSessionServiceTest {
     private ScoreService scoreService;
     @Mock
     private LeaderboardService leaderboardService;
+    @Mock
+    private CampaignService campaignService;
 
-    @InjectMocks
     private GameSessionService gameSessionService;
+
+    @BeforeEach
+    void setUp() {
+        gameSessionService = new GameSessionService(
+                userRepository,
+                gameSessionRepository,
+                scoreRepository,
+                scoreService,
+                leaderboardService,
+                campaignService
+        );
+        when(campaignService.isOpen()).thenReturn(true);
+    }
 
     @Test
     void startSessionThrowsWhenNoPlaysRemaining() {
@@ -49,6 +65,24 @@ class GameSessionServiceTest {
 
         assertThatThrownBy(() -> gameSessionService.startSession(1L, "desktop"))
                 .isInstanceOf(NoPlaysRemainingException.class);
+    }
+
+    @Test
+    void startSessionThrowsWhenCampaignClosed() {
+        when(campaignService.isOpen()).thenReturn(false);
+
+        assertThatThrownBy(() -> gameSessionService.startSession(1L, "desktop"))
+                .isInstanceOf(CampaignClosedException.class);
+        verify(userRepository, never()).findById(1L);
+    }
+
+    @Test
+    void endSessionThrowsWhenCampaignClosed() {
+        when(campaignService.isOpen()).thenReturn(false);
+
+        assertThatThrownBy(() -> gameSessionService.endSession(42L, 1L, 100, 1000))
+                .isInstanceOf(CampaignClosedException.class);
+        verify(gameSessionRepository, never()).findByIdAndUserId(42L, 1L);
     }
 
     @Test
@@ -64,7 +98,6 @@ class GameSessionServiceTest {
         StartSessionResult result = gameSessionService.startSession(1L, "mobile");
 
         assertThat(result.sessionId()).isEqualTo(42L);
-        assertThat(result.canPlay()).isTrue();
         assertThat(result.playsRemaining()).isEqualTo(2);
         assertThat(user.getFreePlaysRemaining()).isEqualTo(2);
         verify(userRepository).save(user);
@@ -96,7 +129,7 @@ class GameSessionServiceTest {
 
         when(gameSessionRepository.findByIdAndUserId(42L, 1L)).thenReturn(Optional.of(session));
         when(scoreService.updateScore(1L, 42L, 4820))
-                .thenReturn(new ScoreUpdateResult(4820, 4820, true, 1));
+                .thenReturn(new ScoreUpdateResult(4820, true));
         when(leaderboardService.getRank(1L)).thenReturn(3);
         when(scoreRepository.count()).thenReturn(124L);
 

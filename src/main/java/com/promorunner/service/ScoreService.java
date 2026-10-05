@@ -49,6 +49,6 @@ public class ScoreService {
 
         eventPublisher.publishEvent(new ScoreSubmittedEvent(userId, sessionId, score, personalBest));
 
-        return new ScoreUpdateResult(score, entity.getBestScore(), personalBest, entity.getTotalPlays());
+        return new ScoreUpdateResult(score, personalBest);
     }
 }

@@ -34,8 +34,8 @@ public class LeaderboardService {
 
     @Transactional(readOnly = true)
     public LeaderboardSnapshot getTop(int limit) {
-        List<Score> scores = scoreRepository.findTopByOrderByBestScoreDesc(PageRequest.of(0, limit));
-        long totalPlayers = scoreRepository.count();
+        List<Score> scores = scoreRepository.findTopVisibleByOrderByBestScoreDesc(PageRequest.of(0, limit));
+        long totalPlayers = scoreRepository.countVisiblePlayers();
 
         List<LeaderboardEntry> entries = new ArrayList<>(scores.size());
         int rank = 1;
@@ -52,7 +52,7 @@ public class LeaderboardService {
 
     /**
      * Top {@link #TOP_LIMIT} plus the viewer's own row appended when they have a score
-     * outside that list.
+     * outside that list (including when they opted out of the public board).
      */
     @Transactional(readOnly = true)
     public LeaderboardSnapshot forViewer(Long userId) {
@@ -95,8 +95,10 @@ public class LeaderboardService {
     }
 
     static String displayName(User user) {
-        String email = user.getEmail();
-        int at = email.indexOf('@');
-        return at > 0 ? email.substring(0, at) : email;
+        String name = user.getDisplayName();
+        if (name != null && !name.isBlank()) {
+            return name.trim();
+        }
+        return "Играч";
     }
 }

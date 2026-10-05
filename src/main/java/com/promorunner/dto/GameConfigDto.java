@@ -1,20 +1,11 @@
 package com.promorunner.dto;
 
-import com.promorunner.model.GameConfig;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 /**
- * Passed to Thymeleaf for game.html — config plus runtime player state (PRD §8.2).
+ * Runtime player state for game.html (window.GAME_CONFIG).
+ * Live gameplay assets/rules live in static/js/game.js.
  */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class GameConfigDto {
-
-    private GameConfig config;
-    /** -1 = unlimited; mirrors users.free_plays_remaining (null → -1 for JSON). */
-    private int playsRemaining;
-    private long currentUserId;
+public record GameConfigDto(
+        /** -1 = unlimited; mirrors users.free_plays_remaining (null → -1 for JSON). */
+        int playsRemaining
+) {
 }

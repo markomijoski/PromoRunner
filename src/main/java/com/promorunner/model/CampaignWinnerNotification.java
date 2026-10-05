@@ -16,36 +16,34 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "magic_link_tokens")
+@Table(name = "campaign_winner_notifications")
 @Getter
 @Setter
 @NoArgsConstructor
-public class MagicLinkToken {
+public class CampaignWinnerNotification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    /** 1–3 for winners; 0 marks an empty-board completion sentinel. */
+    @Column(name = "place_rank", nullable = false, unique = true)
+    private int placeRank;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
     private User user;
 
-    @Column(name = "token_hash", nullable = false, unique = true, length = 64)
-    private String tokenHash;
+    @Column(name = "prize_name", nullable = false, length = 255)
+    private String prizeName;
 
-    @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
-
-    @Column(name = "used_at")
-    private Instant usedAt;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    @Column(name = "email_sent_at", nullable = false)
+    private Instant emailSentAt;
 
     @PrePersist
     void onCreate() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
+        if (emailSentAt == null) {
+            emailSentAt = Instant.now();
         }
     }
 }

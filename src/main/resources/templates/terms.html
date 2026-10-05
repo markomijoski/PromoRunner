@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="mk" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(pageTitle=${brand.name + ' · Услови'})}"></head>
+<body class="road-lines" th:attr="data-authenticated=${authenticated}" x-data="amsmApp()">
+
+<div th:replace="~{fragments/nav :: bar('legal')}"></div>
+
+<main class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+  <p class="rounded-lg bg-amsm-yellow/40 px-3 py-2 text-sm text-amsm-ink">
+    Нацрт за правна ревизија — технички точен опис на услугата.
+  </p>
+  <h1 class="mt-6 font-display text-4xl font-extrabold text-amsm-ink">Услови за користење</h1>
+  <p class="mt-2 text-sm text-amsm-muted" th:text="${brand.name}">AMSM Runner</p>
+
+  <section class="mt-8 space-y-4 text-sm leading-relaxed text-amsm-ink">
+    <h2 class="font-display text-xl font-bold">1. Услуга</h2>
+    <p class="text-amsm-muted">
+      AMSM Runner е промотивна веб-игра. Најавата е со е-пошта и лозинка.
+      Играта нуди ограничен број бесплатни обиди; неограничени игри се достапни со маркетинг согласност.
+    </p>
+
+    <h2 class="font-display text-xl font-bold">2. Сметка</h2>
+    <ul class="list-disc space-y-1 pl-5 text-amsm-muted">
+      <li>Потребни се валидна е-пошта, уникатно корисничко име (3–20 знаци) и лозинка (мин. 8 знаци).</li>
+      <li>Корисничкото име се прикажува јавно на ранг листата освен ако ја скриете.</li>
+      <li>Одговорни сте за чување на вашата лозинка и пристапот до вашата е-пошта.</li>
+    </ul>
+
+    <h2 class="font-display text-xl font-bold">3. Прифатливо користење</h2>
+    <p class="text-amsm-muted">
+      Не смеете да ја злоупотребувате услугата (автоматизација за резултати, навредливи имиња,
+      обид за неовластен пристап). АМСМ може да ги отстрани навредливите имиња или сметки.
+    </p>
+
+    <h2 class="font-display text-xl font-bold">4. Ранг листа и резултати</h2>
+    <p class="text-amsm-muted">
+      Резултатите се чуваат за рангирање. Можете да се повлечете од јавниот приказ или да ја избришете сметката.
+    </p>
+
+    <h2 class="font-display text-xl font-bold">5. Маркетинг</h2>
+    <p class="text-amsm-muted">
+      Маркетинг пораки се испраќаат само со ваша експлицитна согласност. Можете да ја повлечете во секое време од сметката.
+    </p>
+
+    <h2 class="font-display text-xl font-bold">6. Приватност</h2>
+    <p class="text-amsm-muted">
+      Обработката на лични податоци е опишана во
+      <a href="/privacy" class="underline">Политиката за приватност</a>.
+    </p>
+
+    <h2 class="font-display text-xl font-bold">7. Достапност</h2>
+    <p class="text-amsm-muted">
+      Услугата се нуди „како што е“ за време на натпреварот. Може да се прекине или промени без претходна најава.
+    </p>
+
+    <h2 class="font-display text-xl font-bold">8. Контакт</h2>
+    <p class="text-amsm-muted">
+      <a href="https://amsm.mk/" class="underline" rel="noopener" target="_blank">amsm.mk</a>
+    </p>
+  </section>
+
+  <p class="mt-10 text-sm">
+    <a href="/privacy" class="underline">Политика за приватност</a>
+    ·
+    <a href="/" class="underline">Дома</a>
+  </p>
+</main>
+
+<div th:replace="~{fragments/modals :: shell}"></div>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

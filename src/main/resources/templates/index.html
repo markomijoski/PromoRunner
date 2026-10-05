@@ -1,44 +1,223 @@
 <!DOCTYPE html>
 <html lang="mk" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Page Title')}">
+<head th:replace="~{fragments/head :: head(pageTitle=${brand.name})}">
 </head>
-<body class="road-lines"
-      th:attr="data-open-modal=${openModal}, data-modal-error=${modalError}, data-authenticated=${authenticated}"
+<body class="road-lines scroll-smooth"
+      th:attr="data-open-modal=${openModal}, data-modal-error=${modalError}, data-authenticated=${authenticated}, data-reset-ok=${resetOk}"
       x-data="amsmApp()"
       x-init="initFromQuery()">
 
 <div th:replace="~{fragments/nav :: bar('home')}"></div>
 
-<main class="mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start lg:gap-12 lg:py-16">
-  <section class="reveal">
-    <p class="font-display text-sm font-semibold uppercase tracking-[0.2em] text-amsm-muted">Кампања</p>
-    <h1 class="mt-3 font-display text-5xl font-extrabold leading-[0.95] tracking-tight text-amsm-ink sm:text-6xl lg:text-7xl"
-        th:text="${brand.name}">AMSM Runner</h1>
-    <p class="reveal reveal-delay-1 mt-5 max-w-md text-lg text-amsm-muted sm:text-xl"
-       th:text="${brand.campaign}">Campaign</p>
+<main>
+  <!-- Hero -->
+  <div class="mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start lg:gap-12 lg:py-16">
+    <section class="reveal">
+      <h1 class="font-display text-5xl font-extrabold leading-[0.95] tracking-tight text-amsm-ink sm:text-6xl lg:text-7xl"
+          th:text="${brand.name}">AMSM Runner</h1>
+      <p class="reveal reveal-delay-1 mt-5 max-w-md text-lg text-amsm-muted sm:text-xl"
+         th:text="${brand.campaign}">Campaign</p>
+      <p class="reveal reveal-delay-1 mt-2 max-w-md text-sm text-amsm-muted sm:text-base">
+        Возете, собирајте монети и натпреварувајте се на ранг листата.
+      </p>
 
-    <div class="reveal reveal-delay-2 mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-      <button type="button"
-              class="home-play-btn inline-flex min-h-[3.75rem] items-center justify-center rounded-xl bg-amsm-yellow px-10 py-4 font-display text-2xl font-extrabold uppercase tracking-[0.08em] text-amsm-ink sm:min-h-[4rem] sm:px-12 sm:text-3xl"
-              th:attr="data-auth=${authenticated}"
-              @click="onPlay($el.dataset.auth === 'true')">
-        Играј
-      </button>
-      <a href="/leaderboard"
-         class="inline-flex min-h-[3.25rem] items-center justify-center rounded-lg border border-amsm-ink/15 px-6 py-3 font-semibold text-amsm-ink sm:hidden">
-        Ранг листа
-      </a>
+      <div class="reveal reveal-delay-2 mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <th:block th:if="${campaignOpen}">
+          <button type="button"
+                  class="home-play-btn inline-flex min-h-[3.75rem] items-center justify-center rounded-xl bg-amsm-yellow px-10 py-4 font-display text-2xl font-extrabold uppercase tracking-[0.08em] text-amsm-ink sm:min-h-[4rem] sm:px-12 sm:text-3xl"
+                  th:attr="data-auth=${authenticated}"
+                  @click="onPlay($el.dataset.auth === 'true')">
+            Играј
+          </button>
+          <a href="/leaderboard"
+             class="btn-secondary inline-flex min-h-[3.25rem] sm:hidden">
+            Ранг листа
+          </a>
+        </th:block>
+        <th:block th:unless="${campaignOpen}">
+          <span class="inline-flex min-h-[3.75rem] items-center justify-center rounded-xl border-2 border-amsm-ink bg-white px-8 py-4 font-display text-xl font-extrabold uppercase tracking-[0.06em] text-amsm-ink sm:text-2xl">
+            Натпреварот заврши
+          </span>
+          <a href="#prizes" class="btn-secondary inline-flex min-h-[3.25rem]">Види награди</a>
+        </th:block>
+      </div>
+
+      <nav class="reveal reveal-delay-3 mt-8 flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold text-amsm-muted">
+        <a href="#prizes" class="hover:text-amsm-ink">Награди</a>
+        <a href="#how" class="hover:text-amsm-ink">Како се игра</a>
+        <a href="#rules" class="hover:text-amsm-ink">Правила</a>
+        <a href="#faq" class="hover:text-amsm-ink">ЧПП</a>
+      </nav>
+    </section>
+
+    <aside class="reveal reveal-delay-3">
+      <div th:replace="~{fragments/scoreboard :: table(${leaderboard}, ${currentUser != null ? currentUser.id : null})}"></div>
+    </aside>
+  </div>
+
+  <!-- Prizes podium — yellow contrast; prizes only, no names -->
+  <section id="prizes" class="bg-amsm-yellow">
+    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
+      <div class="reveal text-center">
+        <p class="font-display text-sm font-semibold uppercase tracking-[0.2em] text-amsm-ink/70">Топ 3</p>
+        <h2 class="mt-2 font-display text-4xl font-extrabold tracking-tight text-amsm-ink sm:text-5xl">Награди</h2>
+        <p class="mx-auto mt-3 max-w-lg text-amsm-ink/80">
+          Најдобрите три резултати на ранг листата освојуваат награди.
+        </p>
+      </div>
+
+      <div class="prize-podium reveal reveal-delay-1 mt-12">
+        <div class="podium-slot podium-silver">
+          <p class="podium-place">2</p>
+          <p class="podium-prize" th:text="${prizes.second}">Годишна членска карта АМСМ</p>
+          <div class="podium-block podium-block-silver" aria-hidden="true"></div>
+        </div>
+        <div class="podium-slot podium-gold">
+          <p class="podium-place">1</p>
+          <p class="podium-prize" th:text="${prizes.first}">Паметен телефон</p>
+          <div class="podium-block podium-block-gold" aria-hidden="true"></div>
+        </div>
+        <div class="podium-slot podium-bronze">
+          <p class="podium-place">3</p>
+          <p class="podium-prize" th:text="${prizes.third}">АМСМ комплет за пат</p>
+          <div class="podium-block podium-block-bronze" aria-hidden="true"></div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <aside class="reveal reveal-delay-3">
-    <div th:replace="~{fragments/scoreboard :: table(${leaderboard}, ${currentUser != null ? currentUser.id : null})}"></div>
-  </aside>
+  <!-- How it works -->
+  <section id="how" class="border-t border-black/10 bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
+      <div class="reveal max-w-2xl">
+        <h2 class="font-display text-3xl font-extrabold tracking-tight text-amsm-ink sm:text-4xl">Како се игра</h2>
+        <p class="mt-3 text-amsm-muted">Четири брзи чекори од регистрација до награда.</p>
+      </div>
+      <ol class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <li class="reveal border-t-4 border-amsm-yellow pt-4">
+          <p class="font-display text-sm font-bold uppercase tracking-wider text-amsm-muted">01</p>
+          <h3 class="mt-2 font-display text-xl font-bold text-amsm-ink">Регистрирај се</h3>
+          <p class="mt-2 text-sm text-amsm-muted">Создај сметка со е-пошта и корисничко име.</p>
+        </li>
+        <li class="reveal reveal-delay-1 border-t-4 border-amsm-yellow pt-4">
+          <p class="font-display text-sm font-bold uppercase tracking-wider text-amsm-muted">02</p>
+          <h3 class="mt-2 font-display text-xl font-bold text-amsm-ink">Играј</h3>
+          <p class="mt-2 text-sm text-amsm-muted">Вози, скокај и собирај монети за повисок резултат.</p>
+        </li>
+        <li class="reveal reveal-delay-2 border-t-4 border-amsm-yellow pt-4">
+          <p class="font-display text-sm font-bold uppercase tracking-wider text-amsm-muted">03</p>
+          <h3 class="mt-2 font-display text-xl font-bold text-amsm-ink">Качи се</h3>
+          <p class="mt-2 text-sm text-amsm-muted">Следи ја живата ранг листа и подобри го својот рекорд.</p>
+        </li>
+        <li class="reveal reveal-delay-3 border-t-4 border-amsm-yellow pt-4">
+          <p class="font-display text-sm font-bold uppercase tracking-wider text-amsm-muted">04</p>
+          <h3 class="mt-2 font-display text-xl font-bold text-amsm-ink">Освои</h3>
+          <p class="mt-2 text-sm text-amsm-muted">Топ 3 на крајот од натпреварот добиваат награди.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Rules -->
+  <section id="rules" class="border-t border-black/10 bg-amsm-soft">
+    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
+      <div class="reveal max-w-2xl">
+        <h2 class="font-display text-3xl font-extrabold tracking-tight text-amsm-ink sm:text-4xl">Правила</h2>
+        <p class="mt-3 text-amsm-muted">Кратки правила на натпреварот. Целосните услови се на правните страници.</p>
+      </div>
+      <ul class="reveal reveal-delay-1 mt-8 max-w-2xl space-y-3 text-amsm-ink">
+        <li class="flex gap-3">
+          <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amsm-yellow" aria-hidden="true"></span>
+          <span>Натпреварот трае од
+            <strong th:text="${campaignStartDate}">старт</strong>
+            до
+            <strong th:text="${campaignEndDate}">крај</strong>.</span>
+        </li>
+        <li class="flex gap-3">
+          <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amsm-yellow" aria-hidden="true"></span>
+          <span>Рангирањето е според најдобриот резултат (best score).</span>
+        </li>
+        <li class="flex gap-3">
+          <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amsm-yellow" aria-hidden="true"></span>
+          <span>Првите три места на ранг листата освојуваат награди.</span>
+        </li>
+        <li class="flex gap-3">
+          <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amsm-yellow" aria-hidden="true"></span>
+          <span>На ранг листата се прикажува само корисничко име — не е-пошта.</span>
+        </li>
+      </ul>
+      <p class="reveal reveal-delay-2 mt-6 text-sm text-amsm-muted">
+        <a href="/terms" class="font-semibold text-amsm-ink underline-offset-2 hover:underline">Услови</a>
+        ·
+        <a href="/privacy" class="font-semibold text-amsm-ink underline-offset-2 hover:underline">Приватност</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="border-t border-black/10 bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
+      <div class="reveal max-w-2xl">
+        <h2 class="font-display text-3xl font-extrabold tracking-tight text-amsm-ink sm:text-4xl">ЧПП</h2>
+        <p class="mt-3 text-amsm-muted">Најчести прашања за играта и наградите.</p>
+      </div>
+      <div class="mt-10 grid gap-8 md:grid-cols-2">
+        <div class="reveal">
+          <h3 class="font-display text-lg font-bold text-amsm-ink">Колку пати можам да играм?</h3>
+          <p class="mt-2 text-sm text-amsm-muted">Добиваш 3 бесплатни игри. Со согласност за маркетинг пораки — неограничено.</p>
+        </div>
+        <div class="reveal reveal-delay-1">
+          <h3 class="font-display text-lg font-bold text-amsm-ink">Како се избираат победниците?</h3>
+          <p class="mt-2 text-sm text-amsm-muted">Според најдобриот резултат на живата ранг листа на крајот од натпреварот.</p>
+        </div>
+        <div class="reveal reveal-delay-2">
+          <h3 class="font-display text-lg font-bold text-amsm-ink">Дали се гледа мојата е-пошта?</h3>
+          <p class="mt-2 text-sm text-amsm-muted">Не. Јавно се прикажува само корисничкото име. Е-поштата се користи за сметка и известувања.</p>
+        </div>
+        <div class="reveal reveal-delay-3">
+          <h3 class="font-display text-lg font-bold text-amsm-ink">Како ќе добијам награда?</h3>
+          <p class="mt-2 text-sm text-amsm-muted">Ако си во топ 3, ќе добиеш известување на е-пошта по крајот на натпреварот.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section id="cta" class="border-t border-black/10 bg-amsm-ink text-white">
+    <div class="mx-auto max-w-6xl px-4 py-14 text-center sm:px-6 sm:py-16">
+      <h2 class="reveal font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+        Спремен за пат?
+      </h2>
+      <p class="reveal reveal-delay-1 mx-auto mt-3 max-w-md text-white/70">
+        Качи се на ранг листата пред да заврши натпреварот.
+      </p>
+      <div class="reveal reveal-delay-2 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <th:block th:if="${campaignOpen}">
+          <button type="button"
+                  class="home-play-btn inline-flex min-h-[3.5rem] items-center justify-center rounded-xl bg-amsm-yellow px-10 py-3 font-display text-xl font-extrabold uppercase tracking-[0.08em] text-amsm-ink"
+                  th:attr="data-auth=${authenticated}"
+                  @click="onPlay($el.dataset.auth === 'true')">
+            Играј сега
+          </button>
+        </th:block>
+        <th:block th:unless="${campaignOpen}">
+          <span class="inline-flex min-h-[3.5rem] items-center justify-center rounded-xl border-2 border-amsm-yellow px-8 py-3 font-display text-lg font-extrabold uppercase tracking-[0.06em] text-amsm-yellow">
+            Натпреварот заврши
+          </span>
+        </th:block>
+        <a href="#prizes" class="btn-ghost text-white/80 hover:bg-white/10 hover:text-white">Награди</a>
+      </div>
+    </div>
+  </section>
 </main>
 
-<footer class="mx-auto max-w-6xl px-4 pb-10 text-center text-xs text-amsm-muted sm:px-6 sm:text-left">
+<footer class="mx-auto max-w-6xl px-4 py-10 text-center text-xs text-amsm-muted sm:px-6 sm:text-left">
   <a href="https://amsm.mk/" class="hover:text-amsm-ink" rel="noopener" target="_blank">amsm.mk</a>
   · Авто-мото сојуз на Македонија
+  ·
+  <a href="/privacy" class="hover:text-amsm-ink">Приватност</a>
+  ·
+  <a href="/terms" class="hover:text-amsm-ink">Услови</a>
 </footer>
 
 <div th:replace="~{fragments/modals :: shell}"></div>

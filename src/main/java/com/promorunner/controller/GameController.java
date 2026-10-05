@@ -4,6 +4,7 @@ import com.promorunner.dto.EndSessionRequest;
 import com.promorunner.dto.EndSessionResult;
 import com.promorunner.dto.SessionStartResponse;
 import com.promorunner.dto.StartSessionResult;
+import com.promorunner.exception.CampaignClosedException;
 import com.promorunner.exception.NoPlaysRemainingException;
 import com.promorunner.security.CurrentUser;
 import com.promorunner.service.GameSessionService;
@@ -36,6 +37,9 @@ public class GameController {
         } catch (NoPlaysRemainingException ex) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(SessionStartResponse.blocked(0, "CONSENT_REQUIRED"));
+        } catch (CampaignClosedException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(SessionStartResponse.blocked(0, "CAMPAIGN_CLOSED"));
         }
     }
 

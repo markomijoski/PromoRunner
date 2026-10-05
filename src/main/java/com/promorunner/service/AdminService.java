@@ -3,7 +3,6 @@ package com.promorunner.service;
 import com.promorunner.dto.AnalyticsSummaryDto;
 import com.promorunner.dto.AssetUploadResponse;
 import com.promorunner.dto.LeadExportDto;
-import com.promorunner.model.GameConfig;
 import com.promorunner.repository.ScoreRepository;
 import com.promorunner.repository.UserRepository;
 import java.io.IOException;
@@ -20,24 +19,17 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class AdminService {
 
-    private final GameConfigService gameConfigService;
     private final UserRepository userRepository;
     private final ScoreRepository scoreRepository;
     private final Path uploadRoot;
 
     public AdminService(
-            GameConfigService gameConfigService,
             UserRepository userRepository,
             ScoreRepository scoreRepository,
             @Value("${app.upload-dir:src/main/resources/static/images}") String uploadDir) {
-        this.gameConfigService = gameConfigService;
         this.userRepository = userRepository;
         this.scoreRepository = scoreRepository;
         this.uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
-    }
-
-    public GameConfig getAssetsConfig() {
-        return gameConfigService.getConfig();
     }
 
     public AssetUploadResponse uploadImage(MultipartFile file, String subdirectory) throws IOException {

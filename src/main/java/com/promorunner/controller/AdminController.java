@@ -3,7 +3,6 @@ package com.promorunner.controller;
 import com.promorunner.dto.AnalyticsSummaryDto;
 import com.promorunner.dto.AssetUploadResponse;
 import com.promorunner.dto.LeadExportDto;
-import com.promorunner.model.GameConfig;
 import com.promorunner.service.AdminService;
 import java.io.IOException;
 import java.util.List;
@@ -25,11 +24,6 @@ public class AdminController {
 
     public AdminController(AdminService adminService) {
         this.adminService = adminService;
-    }
-
-    @GetMapping("/assets")
-    public GameConfig assets() {
-        return adminService.getAssetsConfig();
     }
 
     @PostMapping(value = "/assets/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

@@ -6,18 +6,15 @@ window.amsmApp = function amsmApp() {
       this.prefillLoginEmail();
       const authenticated = document.body.dataset.authenticated === 'true';
       const open = document.body.dataset.openModal;
-      const err = document.body.dataset.modalError;
 
-      if (authenticated && open === 'login') {
+      if (authenticated && (open === 'login' || open === 'register' || open === 'forgot')) {
         window.location.replace('/game');
         return;
       }
 
-      if (open === 'login' || open === 'check-email' || open === 'consent') {
+      if (open === 'login' || open === 'register' || open === 'forgot'
+          || open === 'consent' || open === 'username' || open === 'account') {
         this.modal = open;
-      }
-      if (err === 'invalid_token') {
-        this.modal = 'login';
       }
       if (this.modal === 'login') {
         this.$nextTick(() => this.prefillLoginEmail());
@@ -27,10 +24,12 @@ window.amsmApp = function amsmApp() {
       try {
         const saved = localStorage.getItem('amsm.email');
         if (!saved) return;
-        const input = document.getElementById('login-email');
-        if (input && !input.value) {
-          input.value = saved;
-        }
+        ['login-email', 'register-email'].forEach((id) => {
+          const input = document.getElementById(id);
+          if (input && !input.value) {
+            input.value = saved;
+          }
+        });
       } catch (e) {
         /* ignore */
       }
@@ -47,6 +46,7 @@ window.amsmApp = function amsmApp() {
       this.modal = 'consent';
     },
     closeModal() {
+      if (this.modal === 'username') return;
       this.modal = null;
     },
     onPlay(authenticated) {
@@ -82,15 +82,24 @@ document.addEventListener('htmx:configRequest', function (event) {
 });
 
 document.addEventListener('htmx:afterSwap', function (event) {
-  if (event.detail.target && event.detail.target.id === 'login-form-slot') {
+  const target = event.detail.target;
+  if (!target) return;
+  if (target.id === 'login-form-slot' || target.id === 'register-form-slot' || target.id === 'forgot-form-slot') {
     try {
       const saved = localStorage.getItem('amsm.email');
-      const input = document.getElementById('login-email');
-      if (input && saved && !input.value) {
-        input.value = saved;
-      }
+      if (!saved) return;
+      target.querySelectorAll('input[name=email]').forEach((input) => {
+        if (!input.value) input.value = saved;
+      });
     } catch (e) {
       /* ignore */
     }
+  }
+});
+
+document.addEventListener('htmx:afterRequest', function (event) {
+  const redirect = event.detail.xhr && event.detail.xhr.getResponseHeader('HX-Redirect');
+  if (redirect) {
+    window.location.href = redirect;
   }
 });

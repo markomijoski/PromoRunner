@@ -29,14 +29,17 @@
       }
     }
   </script>
-  <style th:inline="css">
-    :root {
-      --color-primary: /*[[${brand.primaryColor}]]*/ #FFD200;
-      --color-ink: /*[[${brand.secondaryColor}]]*/ #0A0A0A;
-      --color-bg: /*[[${brand.backgroundColor}]]*/ #FFFFFF;
+  <!-- Brand tokens: do not use th:inline="css" — it escapes # to \# and breaks every amsm-* color -->
+  <style th:utext="|    :root {
+      --color-primary: ${brand.primaryColor};
+      --color-ink: ${brand.secondaryColor};
+      --color-bg: ${brand.backgroundColor};
       --color-muted: #5C5C5C;
       --color-soft: #F7F7F7;
     }
+|">
+  </style>
+  <style>
     body {
       font-family: "Source Sans 3", sans-serif;
       background: var(--color-bg);
@@ -98,6 +101,65 @@
     }
     .htmx-request .btn-spinner { display: inline-block !important; }
     .btn-spinner { display: none; }
+    .btn-primary,
+    .btn-secondary,
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      min-height: 2.75rem;
+      border-radius: 0.5rem;
+      padding: 0.625rem 1rem;
+      font-family: "Fira Sans Condensed", sans-serif;
+      font-weight: 700;
+      line-height: 1.2;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .btn-primary {
+      border: 0;
+      background: var(--color-primary);
+      color: var(--color-ink);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .btn-primary:hover { filter: brightness(0.96); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-secondary {
+      border: 1px solid rgba(10, 10, 10, 0.2);
+      background: #fff;
+      color: var(--color-ink);
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .btn-secondary:hover { background: var(--color-soft); }
+    .btn-ghost {
+      border: 0;
+      background: transparent;
+      color: var(--color-ink);
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+      min-height: 2.5rem;
+      padding: 0.5rem 0.75rem;
+    }
+    .btn-ghost:hover { color: var(--color-ink); background: rgba(10, 10, 10, 0.04); }
+    .btn-primary:focus-visible,
+    .btn-secondary:focus-visible,
+    .btn-ghost:focus-visible,
+    .home-play-btn:focus-visible {
+      outline: 2px solid var(--color-ink);
+      outline-offset: 3px;
+    }
+    .btn-block { width: 100%; }
+    .btn-lg {
+      min-height: 3.25rem;
+      padding: 0.85rem 1.25rem;
+      font-size: 1.125rem;
+    }
     .home-play-btn {
       box-shadow: 0 2px 0 rgba(10, 10, 10, 0.12);
       transition: transform 0.18s ease, box-shadow 0.18s ease;
@@ -110,9 +172,73 @@
       transform: scale(0.98);
       box-shadow: 0 1px 0 rgba(10, 10, 10, 0.1);
     }
-    .home-play-btn:focus-visible {
-      outline: 2px solid var(--color-ink);
-      outline-offset: 3px;
+    html { scroll-behavior: smooth; }
+    .prize-podium {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: end;
+      gap: 0.75rem;
+      max-width: 42rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    @media (min-width: 640px) {
+      .prize-podium { gap: 1.25rem; }
+    }
+    .podium-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      min-width: 0;
+    }
+    .podium-place {
+      font-family: "Fira Sans Condensed", sans-serif;
+      font-weight: 800;
+      font-size: 1.5rem;
+      line-height: 1;
+      color: #0A0A0A;
+      margin: 0 0 0.5rem;
+    }
+    @media (min-width: 640px) {
+      .podium-place { font-size: 2rem; }
+    }
+    .podium-prize {
+      font-family: "Fira Sans Condensed", sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      line-height: 1.25;
+      color: #0A0A0A;
+      margin: 0 0 0.75rem;
+      min-height: 2.5rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    @media (min-width: 640px) {
+      .podium-prize { font-size: 1.05rem; min-height: 3rem; }
+    }
+    .podium-block {
+      width: 100%;
+      border: 3px solid #0A0A0A;
+      border-bottom: 0;
+    }
+    .podium-block-gold {
+      height: 8.5rem;
+      background: #D4AF37;
+    }
+    .podium-block-silver {
+      height: 6rem;
+      background: #A8B0B8;
+    }
+    .podium-block-bronze {
+      height: 4.25rem;
+      background: #CD7F32;
+    }
+    @media (min-width: 640px) {
+      .podium-block-gold { height: 11rem; }
+      .podium-block-silver { height: 8rem; }
+      .podium-block-bronze { height: 5.5rem; }
     }
     #game-canvas.game-stage {
       position: relative;
@@ -125,8 +251,18 @@
     }
     @media (max-width: 767px) {
       #game-canvas.game-stage {
-        min-height: 82dvh !important;
-        height: 88dvh !important;
+        min-height: min(70dvh, calc(100dvh - 9rem)) !important;
+        height: min(82dvh, calc(100dvh - 7.5rem)) !important;
+      }
+    }
+    @media (max-height: 500px) and (orientation: landscape) {
+      #game-canvas.game-stage {
+        min-height: calc(100dvh - 6.5rem) !important;
+        height: calc(100dvh - 5.5rem) !important;
+      }
+      body .amsm-nav {
+        padding-top: 0.35rem;
+        padding-bottom: 0.35rem;
       }
     }
     [x-cloak] { display: none !important; }

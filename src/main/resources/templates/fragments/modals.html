@@ -7,14 +7,17 @@
      x-cloak
      class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
      style="display:none"
-     @keydown.escape.window="closeModal()">
-  <div class="absolute inset-0 bg-black/50" @click="closeModal()"></div>
+     @keydown.escape.window="modal !== 'username' && closeModal()">
+  <div class="absolute inset-0 bg-black/50"
+       @click="modal !== 'username' && closeModal()"></div>
   <div class="modal-panel relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl"
        role="dialog"
        aria-modal="true"
-       :aria-label="modal === 'login' ? 'Најава' : modal === 'consent' ? 'Согласност' : 'Проверете ја поштата'">
+       :aria-labelledby="modal === 'login' ? 'modal-title-login' : modal === 'register' ? 'modal-title-register' : modal === 'forgot' ? 'modal-title-forgot' : modal === 'consent' ? 'modal-title-consent' : modal === 'username' ? 'modal-title-username' : modal === 'account' ? 'modal-title-account' : null"
+       :aria-label="modal === 'login' ? 'Најава' : modal === 'register' ? 'Регистрација' : modal === 'forgot' ? 'Заборавена лозинка' : modal === 'consent' ? 'Согласност' : modal === 'username' ? 'Корисничко име' : modal === 'account' ? 'Сметка' : 'Дијалог'">
     <button type="button"
-            class="absolute right-4 top-4 text-2xl leading-none text-amsm-muted hover:text-amsm-ink"
+            x-show="modal !== 'username'"
+            class="btn-ghost absolute right-2 top-2 text-2xl leading-none text-amsm-muted"
             @click="closeModal()"
             aria-label="Затвори">&times;</button>
 
@@ -23,42 +26,56 @@
         <div th:replace="~{fragments/modals :: login-form}"></div>
       </div>
     </div>
-    <div x-show="modal === 'check-email'">
-      <div id="check-email-slot">
-        <div th:replace="~{fragments/modals :: check-email-static}"></div>
+    <div x-show="modal === 'register'">
+      <div id="register-form-slot">
+        <div th:replace="~{fragments/modals :: register-form}"></div>
+      </div>
+    </div>
+    <div x-show="modal === 'forgot'">
+      <div id="forgot-form-slot">
+        <div th:replace="~{fragments/modals :: forgot-form}"></div>
       </div>
     </div>
     <div x-show="modal === 'consent'">
       <div th:replace="~{fragments/modals :: consent}"></div>
     </div>
+    <div x-show="modal === 'username'">
+      <div id="username-form-slot">
+        <div th:replace="~{fragments/modals :: username-form}"></div>
+      </div>
+    </div>
+    <div x-show="modal === 'account'">
+      <div th:replace="~{fragments/modals :: account}"></div>
+    </div>
   </div>
 </div>
 
 <div th:fragment="login-form">
-  <h2 class="font-display text-3xl font-bold tracking-tight text-amsm-ink">Најава</h2>
-  <p class="mt-2 text-sm text-amsm-muted">Внесете е-пошта. Ќе ви испратиме линк за најава.</p>
-  <p th:if="${modalError == 'invalid_token'}"
-     class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-    Линкот е невалиден или истечен. Побарајте нов.
+  <h2 id="modal-title-login" class="font-display text-3xl font-bold tracking-tight text-amsm-ink">Најава</h2>
+  <p class="mt-2 text-sm text-amsm-muted">Внесете е-пошта и лозинка.</p>
+  <p th:if="${resetOk}"
+     class="mt-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
+    Лозинката е променета. Најавете се.
   </p>
-  <p th:if="${modalError == 'rate_limit'}"
-     class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-    Премногу обиди. Почекајте неколку минути и обидете се повторно.
+  <p th:if="${modalError == 'validation'}"
+     class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+     th:text="${validationError}">Грешка</p>
+  <p class="mt-3 text-xs text-amsm-muted">
+    Со продолжување се согласувате со
+    <a href="/terms" class="underline hover:text-amsm-ink">Условите</a>
+    и
+    <a href="/privacy" class="underline hover:text-amsm-ink">Политиката за приватност</a>.
   </p>
   <form class="mt-6 space-y-4"
         hx-post="/auth/login"
-        hx-target="#check-email-slot"
-        hx-swap="innerHTML"
+        hx-swap="none"
         @htmx:after-request="
           if (!$event.detail.successful) return;
           if ($event.detail.xhr.getResponseHeader('HX-Redirect')) return;
-          const retarget = $event.detail.xhr.getResponseHeader('HX-Retarget');
-          if (retarget === '#login-form-slot') return;
           try {
             const f = $event.detail.elt.querySelector('[name=email]');
             if (f && f.value) localStorage.setItem('amsm.email', f.value.trim());
           } catch (e) {}
-          modal = 'check-email';
         ">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <label class="block text-sm font-medium text-amsm-ink">
@@ -73,42 +90,178 @@
              th:value="${loginEmail}"
              class="mt-1.5 w-full rounded-lg border border-black/15 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-amsm-yellow"/>
     </label>
-    <button type="submit"
-            class="flex w-full items-center justify-center gap-2 rounded-lg bg-amsm-yellow px-4 py-3.5 font-display text-lg font-bold uppercase tracking-wide text-amsm-ink transition hover:brightness-95 active:scale-[0.98]">
+    <label class="block text-sm font-medium text-amsm-ink">
+      Лозинка
+      <input type="password"
+             id="login-password"
+             name="password"
+             required
+             minlength="8"
+             autocomplete="current-password"
+             class="mt-1.5 w-full rounded-lg border border-black/15 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-amsm-yellow"/>
+    </label>
+    <div class="flex items-center justify-between text-sm">
+      <button type="button" class="text-amsm-muted underline hover:text-amsm-ink" @click="modal = 'forgot'">
+        Заборавена лозинка?
+      </button>
+      <button type="button" class="font-semibold text-amsm-ink underline" @click="modal = 'register'">
+        Регистрација
+      </button>
+    </div>
+    <button type="submit" class="btn-primary btn-block btn-lg">
+      <span>Најави се</span>
+      <span class="btn-spinner h-4 w-4 animate-spin rounded-full border-2 border-amsm-ink/30 border-t-amsm-ink"></span>
+    </button>
+  </form>
+</div>
+
+<div th:fragment="register-form">
+  <h2 id="modal-title-register" class="font-display text-3xl font-bold tracking-tight text-amsm-ink">Регистрација</h2>
+  <p class="mt-2 text-sm text-amsm-muted">Е-пошта, корисничко име и лозинка (мин. 8 знаци).</p>
+  <p th:if="${modalError == 'validation'}"
+     class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+     th:text="${validationError}">Грешка</p>
+  <form class="mt-6 space-y-4"
+        hx-post="/auth/register"
+        hx-swap="none"
+        @htmx:after-request="
+          if (!$event.detail.successful) return;
+          if ($event.detail.xhr.getResponseHeader('HX-Redirect')) return;
+          try {
+            const f = $event.detail.elt.querySelector('[name=email]');
+            if (f && f.value) localStorage.setItem('amsm.email', f.value.trim());
+            const u = $event.detail.elt.querySelector('[name=username]');
+            if (u && u.value) localStorage.setItem('amsm.username', u.value.trim());
+          } catch (e) {}
+        ">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <label class="block text-sm font-medium text-amsm-ink">
+      Е-пошта
+      <input type="email"
+             id="register-email"
+             name="email"
+             required
+             autocomplete="email"
+             inputmode="email"
+             placeholder="vie@email.com"
+             th:value="${loginEmail}"
+             class="mt-1.5 w-full rounded-lg border border-black/15 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-amsm-yellow"/>
+    </label>
+    <label class="block text-sm font-medium text-amsm-ink">
+      Корисничко име
+      <input type="text"
+             id="register-username"
+             name="username"
+             required
+             minlength="3"
+             maxlength="20"
+             autocomplete="username"
+             placeholder="igrach123"
+             pattern="[A-Za-zА-Ша-ш0-9_]+"
+             th:value="${loginUsername}"
+             class="mt-1.5 w-full rounded-lg border border-black/15 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-amsm-yellow"/>
+    </label>
+    <p class="text-xs text-amsm-muted">3–20 знаци: букви, бројки и _ . Се прикажува на ранг листата.</p>
+    <label class="block text-sm font-medium text-amsm-ink">
+      Лозинка
+      <input type="password"
+             name="password"
+             required
+             minlength="8"
+             autocomplete="new-password"
+             class="mt-1.5 w-full rounded-lg border border-black/15 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-amsm-yellow"/>
+    </label>
+    <button type="button" class="text-sm text-amsm-muted underline hover:text-amsm-ink" @click="modal = 'login'">
+      Веќе имате сметка? Најава
+    </button>
+    <button type="submit" class="btn-primary btn-block btn-lg">
+      <span>Креирај сметка</span>
+      <span class="btn-spinner h-4 w-4 animate-spin rounded-full border-2 border-amsm-ink/30 border-t-amsm-ink"></span>
+    </button>
+  </form>
+</div>
+
+<div th:fragment="forgot-form">
+  <h2 id="modal-title-forgot" class="font-display text-3xl font-bold tracking-tight text-amsm-ink">Заборавена лозинка</h2>
+  <p class="mt-2 text-sm text-amsm-muted">
+    Внесете ја е-поштата. Ако постои сметка, ќе испратиме линк за ресетирање.
+  </p>
+  <p th:if="${modalError == 'validation'}"
+     class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+     th:text="${validationError}">Грешка</p>
+  <form class="mt-6 space-y-4"
+        hx-post="/auth/forgot"
+        hx-target="#forgot-form-slot"
+        hx-swap="innerHTML">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <label class="block text-sm font-medium text-amsm-ink">
+      Е-пошта
+      <input type="email"
+             name="email"
+             required
+             autocomplete="email"
+             inputmode="email"
+             placeholder="vie@email.com"
+             th:value="${loginEmail}"
+             class="mt-1.5 w-full rounded-lg border border-black/15 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-amsm-yellow"/>
+    </label>
+    <button type="button" class="text-sm text-amsm-muted underline hover:text-amsm-ink" @click="modal = 'login'">
+      Назад на најава
+    </button>
+    <button type="submit" class="btn-primary btn-block btn-lg">
       <span>Испрати линк</span>
       <span class="btn-spinner h-4 w-4 animate-spin rounded-full border-2 border-amsm-ink/30 border-t-amsm-ink"></span>
     </button>
   </form>
 </div>
 
-<div th:fragment="check-email">
-  <h2 class="font-display text-3xl font-bold text-amsm-ink">Проверете ја поштата</h2>
+<div th:fragment="forgot-sent">
+  <h2 id="modal-title-forgot" class="font-display text-3xl font-bold text-amsm-ink">Проверете ја поштата</h2>
   <p class="mt-3 text-amsm-muted">
-    Испративме линк до
-    <strong class="text-amsm-ink" th:text="${email}">you@example.com</strong>.
+    Ако постои сметка за таа е-пошта, испративме линк за ресетирање на лозинката.
   </p>
-  <p class="mt-2 text-sm text-amsm-muted">Линкот истекува за 15 минути и може да се користи еднаш.</p>
+  <p class="mt-2 text-sm text-amsm-muted">Линкот истекува за 30 минути и може да се користи еднаш.</p>
   <button type="button"
-          class="mt-6 w-full rounded-lg border border-amsm-ink/20 px-4 py-3 font-semibold text-amsm-ink"
-          onclick="const el=document.querySelector('[x-data]'); if(el &amp;&amp; window.Alpine) Alpine.$data(el).closeModal();">
-    Во ред
+          class="btn-secondary btn-block mt-6"
+          @click="modal = 'login'">
+    Назад на најава
   </button>
 </div>
 
-<div th:fragment="check-email-static">
-  <h2 class="font-display text-3xl font-bold text-amsm-ink">Проверете ја поштата</h2>
-  <p class="mt-3 text-amsm-muted">Испративме линк за најава. Отворете го од вашата е-пошта.</p>
-  <p class="mt-2 text-sm text-amsm-muted">Линкот истекува за 15 минути.</p>
-  <button type="button"
-          class="mt-6 w-full rounded-lg border border-amsm-ink/20 px-4 py-3 font-semibold"
-          @click="closeModal()">
-    Во ред
-  </button>
+<div th:fragment="username-form">
+  <h2 id="modal-title-username" class="font-display text-3xl font-bold tracking-tight text-amsm-ink">Изберете име</h2>
+  <p class="mt-2 text-sm text-amsm-muted">Потребно е корисничко име пред да играте. Не се користи вашата е-пошта на ранг листата.</p>
+  <p th:if="${usernameError}"
+     class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+     th:text="${usernameError}">Грешка</p>
+  <form class="mt-6 space-y-4"
+        hx-post="/auth/username"
+        hx-swap="none">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <label class="block text-sm font-medium text-amsm-ink">
+      Корисничко име
+      <input type="text"
+             name="username"
+             required
+             minlength="3"
+             maxlength="20"
+             autocomplete="username"
+             placeholder="igrach123"
+             class="mt-1.5 w-full rounded-lg border border-black/15 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-amsm-yellow"/>
+    </label>
+    <button type="submit" class="btn-primary btn-block btn-lg">
+      Зачувај
+    </button>
+  </form>
 </div>
 
 <div th:fragment="consent">
-  <h2 class="font-display text-3xl font-bold text-amsm-ink">Речиси сте во</h2>
+  <h2 id="modal-title-consent" class="font-display text-3xl font-bold text-amsm-ink">Речиси сте во</h2>
   <p class="mt-2 text-sm text-amsm-muted">Изберете како сакате да играте.</p>
+  <p class="mt-2 text-xs text-amsm-muted">
+    Повеќе во
+    <a href="/privacy" class="underline hover:text-amsm-ink">Политиката за приватност</a>.
+  </p>
   <form method="post" action="/consent" class="mt-6 space-y-5" x-data="{ agreed: false }">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <label class="flex cursor-pointer items-start gap-3 rounded-xl bg-amsm-soft p-4">
@@ -116,7 +269,7 @@
              name="consented"
              value="true"
              x-model="agreed"
-             class="mt-1 h-5 w-5 accent-[#FFD200]"/>
+             class="mt-1 h-5 w-5 accent-[var(--color-primary)]"/>
       <span class="text-sm leading-snug text-amsm-ink" th:text="${brand.consentLabelText}">Consent</span>
     </label>
     <div class="space-y-3">
@@ -124,16 +277,73 @@
               name="action"
               value="consent"
               :disabled="!agreed"
-              :class="agreed ? 'bg-amsm-yellow text-amsm-ink' : 'bg-black/10 text-amsm-muted cursor-not-allowed'"
-              class="w-full rounded-lg px-4 py-3.5 font-display text-lg font-bold uppercase tracking-wide transition active:scale-[0.98]">
+              :class="agreed ? 'btn-primary' : 'bg-black/10 text-amsm-muted cursor-not-allowed border-0'"
+              class="btn-block btn-lg font-display font-bold uppercase tracking-wide">
         Неограничени игри
       </button>
       <button type="submit" name="action" value="skip"
-              class="w-full rounded-lg border border-amsm-ink/20 px-4 py-3 font-semibold text-amsm-ink">
+              class="btn-secondary btn-block">
         Прескокни (3 бесплатни)
       </button>
     </div>
   </form>
+</div>
+
+<div th:fragment="account"
+     th:with="u=${accountUser}"
+     x-data="{ confirmDelete: false, visible: true }">
+  <h2 id="modal-title-account" class="font-display text-3xl font-bold tracking-tight text-amsm-ink">Сметка</h2>
+  <p class="mt-2 text-sm text-amsm-muted"
+     th:if="${u != null}"
+     th:text="${u.displayName + ' · ' + u.email}">user</p>
+
+  <div class="mt-6 space-y-4" th:if="${u != null}">
+    <form method="post" action="/account/leaderboard-visibility" class="rounded-xl bg-amsm-soft p-4">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <input type="hidden" name="visible" id="lb-visible-value" th:value="${u.leaderboardVisible}"/>
+      <label class="flex cursor-pointer items-start gap-3">
+        <input type="checkbox"
+               th:checked="${u.leaderboardVisible}"
+               onchange="document.getElementById('lb-visible-value').value = this.checked ? 'true' : 'false'; this.form.submit()"
+               class="mt-1 h-5 w-5 accent-[var(--color-primary)]"/>
+        <span class="text-sm leading-snug text-amsm-ink">
+          Прикажи ме на јавната ранг листа
+        </span>
+      </label>
+    </form>
+
+    <form th:if="${u.marketingConsent}" method="post" action="/consent/withdraw">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="btn-secondary btn-block text-sm">
+        Повлечи маркетинг согласност
+      </button>
+    </form>
+
+    <form method="post" action="/auth/logout">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="btn-primary btn-block">
+        Одјава
+      </button>
+    </form>
+
+    <div class="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+      <p class="text-sm text-red-800">Бришењето е трајно: е-пошта, резултати и сесии.</p>
+      <label class="flex items-start gap-2 text-sm text-red-900">
+        <input type="checkbox" x-model="confirmDelete" class="mt-0.5"/>
+        Разбирам дека сметката ќе се избрише
+      </label>
+      <form method="post" action="/account/delete"
+            onsubmit="return confirm('Дали сте сигурни? Ова не може да се врати.');">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button type="submit"
+                :disabled="!confirmDelete"
+                :class="confirmDelete ? 'bg-red-600 text-white' : 'bg-red-200 text-red-400 cursor-not-allowed'"
+                class="w-full rounded-lg px-4 py-3 text-sm font-bold uppercase min-h-[2.75rem]">
+          Избриши сметка
+        </button>
+      </form>
+    </div>
+  </div>
 </div>
 
 </body>

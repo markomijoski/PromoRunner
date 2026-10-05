@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="mk" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(pageTitle=${brand.name + ' · Приватност'})}"></head>
+<body class="road-lines" th:attr="data-authenticated=${authenticated}" x-data="amsmApp()">
+
+<div th:replace="~{fragments/nav :: bar('legal')}"></div>
+
+<main class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+  <p class="rounded-lg bg-amsm-yellow/40 px-3 py-2 text-sm text-amsm-ink">
+    Нацрт за правна ревизија — го опишува што апликацијата навистина прави во кодот.
+  </p>
+  <h1 class="mt-6 font-display text-4xl font-extrabold text-amsm-ink">Политика за приватност</h1>
+  <p class="mt-2 text-sm text-amsm-muted" th:text="${brand.name}">AMSM Runner</p>
+
+  <section class="mt-8 space-y-4 text-sm leading-relaxed text-amsm-ink">
+    <h2 class="font-display text-xl font-bold">1. Контролор</h2>
+    <p>
+      Авто-мото сојуз на Македонија (АМСМ) ја води оваа промотивна игра.
+      Контакт: <a href="https://amsm.mk/" class="underline" rel="noopener" target="_blank">amsm.mk</a>.
+    </p>
+
+    <h2 class="font-display text-xl font-bold">2. Кои податоци се собираат</h2>
+    <ul class="list-disc space-y-1 pl-5 text-amsm-muted">
+      <li>Е-пошта (за најава)</li>
+      <li>Корисничко име (јавно на ранг листата, ако не сте се сокриле)</li>
+      <li>Хеш на лозинка (BCrypt; не ја чуваме во читлива форма)</li>
+      <li>Согласност за маркетинг (да/не)</li>
+      <li>Резултати, број на игри, сесии (вкл. тип уред: мобилен/десктоп)</li>
+      <li>Време на креирање и последна активност</li>
+      <li>Колачиња: сесија (<code>JSESSIONID</code>) и CSRF (<code>XSRF-TOKEN</code>)</li>
+      <li>Локално во прелистувачот: зачувана е-пошта за препополнување на формуларот</li>
+    </ul>
+    <p class="text-amsm-muted">Не чуваме IP адреси во базата.</p>
+
+    <h2 class="font-display text-xl font-bold">3. Цели</h2>
+    <ul class="list-disc space-y-1 pl-5 text-amsm-muted">
+      <li>Автентикација и безбедност на сметката</li>
+      <li>Играње и рангирање</li>
+      <li>Маркетинг пораки само ако сте дале согласност</li>
+      <li>Административна статистика и извоз на согласени лидови</li>
+    </ul>
+
+    <h2 class="font-display text-xl font-bold">4. Ранг листа</h2>
+    <p class="text-amsm-muted">
+      Јавно се прикажува вашето корисничко име и резултат (не е-поштата).
+      Можете да се скриете од јавната листа во поставките на сметката.
+    </p>
+
+    <h2 class="font-display text-xl font-bold">5. Ваши права</h2>
+    <ul class="list-disc space-y-1 pl-5 text-amsm-muted">
+      <li>Преземете ги вашите податоци (JSON) од сметката</li>
+      <li>Избришете ја сметката и поврзаните податоци</li>
+      <li>Повлечете маркетинг согласност</li>
+      <li>Контролирајте видливост на ранг листата</li>
+    </ul>
+
+    <h2 class="font-display text-xl font-bold">6. Задржување</h2>
+    <p class="text-amsm-muted">
+      Податоците се чуваат додека постои сметката. По бришење се отстрануваат корисникот,
+      резултатите, сесиите и токените за ресетирање на лозинка. Токените за ресетирање истекуваат по 30 минути.
+    </p>
+
+    <h2 class="font-display text-xl font-bold">7. Третии страни</h2>
+    <p class="text-amsm-muted">
+      Страницата вчитува фонтови и скрипти од CDN (Google Fonts, jsDelivr, unpkg, Tailwind CDN)
+      за приказ и функционалност. Е-поштата за ресетирање на лозинка се испраќа преку конфигурираниот mail сервер.
+    </p>
+
+    <h2 class="font-display text-xl font-bold">8. Колачиња</h2>
+    <p class="text-amsm-muted">
+      Користиме неопходни колачиња за сесија и CSRF заштита. Немаме аналитички тракери во апликацијата.
+    </p>
+  </section>
+
+  <p class="mt-10 text-sm">
+    <a href="/terms" class="underline">Услови за користење</a>
+    ·
+    <a href="/" class="underline">Дома</a>
+  </p>
+</main>
+
+<div th:replace="~{fragments/modals :: shell}"></div>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

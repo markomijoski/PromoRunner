@@ -28,6 +28,10 @@ public class User {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
+    /** BCrypt hash; null until the user sets a password (e.g. via forgot-password). */
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
+
     @Column(name = "display_name", length = 255)
     private String displayName;
 
@@ -43,6 +47,9 @@ public class User {
 
     @Column(name = "marketing_consent", nullable = false)
     private boolean marketingConsent = false;
+
+    @Column(name = "leaderboard_visible", nullable = false)
+    private boolean leaderboardVisible = true;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

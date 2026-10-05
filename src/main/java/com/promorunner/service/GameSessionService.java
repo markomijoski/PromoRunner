@@ -3,6 +3,7 @@ package com.promorunner.service;
 import com.promorunner.dto.EndSessionResult;
 import com.promorunner.dto.ScoreUpdateResult;
 import com.promorunner.dto.StartSessionResult;
+import com.promorunner.exception.CampaignClosedException;
 import com.promorunner.exception.NoPlaysRemainingException;
 import com.promorunner.exception.SessionAlreadyCompletedException;
 import com.promorunner.exception.SessionNotFoundException;
@@ -24,22 +25,27 @@ public class GameSessionService {
     private final ScoreRepository scoreRepository;
     private final ScoreService scoreService;
     private final LeaderboardService leaderboardService;
+    private final CampaignService campaignService;
 
     public GameSessionService(
             UserRepository userRepository,
             GameSessionRepository gameSessionRepository,
             ScoreRepository scoreRepository,
             ScoreService scoreService,
-            LeaderboardService leaderboardService) {
+            LeaderboardService leaderboardService,
+            CampaignService campaignService) {
         this.userRepository = userRepository;
         this.gameSessionRepository = gameSessionRepository;
         this.scoreRepository = scoreRepository;
         this.scoreService = scoreService;
         this.leaderboardService = leaderboardService;
+        this.campaignService = campaignService;
     }
 
     @Transactional
     public StartSessionResult startSession(long userId, String deviceType) {
+        requireCampaignOpen();
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
@@ -59,11 +65,13 @@ public class GameSessionService {
         gameSessionRepository.save(session);
 
         int playsRemaining = remaining == null ? -1 : remaining;
-        return new StartSessionResult(session.getId(), true, playsRemaining);
+        return new StartSessionResult(session.getId(), playsRemaining);
     }
 
     @Transactional
     public EndSessionResult endSession(long sessionId, long userId, int score, int durationMs) {
+        requireCampaignOpen();
+
         GameSession session = gameSessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
@@ -82,5 +90,11 @@ public class GameSessionService {
         long totalPlayers = scoreRepository.count();
 
         return new EndSessionResult(update.score(), update.personalBest(), rank, totalPlayers);
+    }
+
+    private void requireCampaignOpen() {
+        if (!campaignService.isOpen()) {
+            throw new CampaignClosedException();
+        }
     }
 }

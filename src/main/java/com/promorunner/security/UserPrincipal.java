@@ -14,23 +14,30 @@ public class UserPrincipal implements UserDetails {
 
     private final Long id;
     private final String email;
+    private final String passwordHash;
     private final UserRole role;
     private final Collection<? extends GrantedAuthority> authorities;
 
-    public UserPrincipal(Long id, String email, UserRole role) {
+    public UserPrincipal(Long id, String email, String passwordHash, UserRole role) {
         this.id = id;
         this.email = email;
+        this.passwordHash = passwordHash;
         this.role = role;
         this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     public static UserPrincipal from(User user) {
-        return new UserPrincipal(user.getId(), user.getEmail(), user.getRole());
+        return new UserPrincipal(
+                user.getId(),
+                user.getEmail(),
+                user.getPasswordHash(),
+                user.getRole()
+        );
     }
 
     @Override
     public String getPassword() {
-        return "";
+        return passwordHash == null ? "" : passwordHash;
     }
 
     @Override

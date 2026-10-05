@@ -5,11 +5,7 @@ spring:
     default: dev
   autoconfigure:
     exclude:
-      # Redis deferred to Phase 5 — dependency stays in pom, no auto-connect
-      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
-      - org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration
-      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration
-      # Magic-link auth is custom; suppress generated in-memory default user
+      # Custom UserDetailsService; suppress generated in-memory default user
       - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   thymeleaf:
     check-template-location: false
@@ -22,6 +18,14 @@ server:
 app:
   base-url: http://localhost:8080
   upload-dir: src/main/resources/static/images
+  campaign:
+    # start-at / end-at optional ISO-8601 instants; when unset, start = boot time, end = start + duration-days
+    duration-days: 30
+    winner-email-enabled: true
+    prizes:
+      first: "Паметен телефон"
+      second: "Годишна членска карта АМСМ"
+      third: "АМСМ комплет за пат"
 
 # Brand defaults — override per deployment without code changes
 brand:

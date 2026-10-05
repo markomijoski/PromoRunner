@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.promorunner.dto.EndSessionResult;
 import com.promorunner.dto.LeaderboardSnapshot;
 import com.promorunner.dto.StartSessionResult;
+import com.promorunner.exception.CampaignClosedException;
 import com.promorunner.exception.NoPlaysRemainingException;
 import com.promorunner.model.UserRole;
 import com.promorunner.security.UserPrincipal;
@@ -37,12 +38,12 @@ class ApiControllerTest {
     @MockitoBean
     private LeaderboardService leaderboardService;
 
-    private final UserPrincipal player = new UserPrincipal(1L, "p@ex.com", UserRole.PLAYER);
+    private final UserPrincipal player = new UserPrincipal(1L, "p@ex.com", "hash", UserRole.PLAYER);
 
     @Test
     void startSessionReturnsAllowedPayload() throws Exception {
         when(gameSessionService.startSession(1L, "desktop"))
-                .thenReturn(new StartSessionResult(42L, true, 2));
+                .thenReturn(new StartSessionResult(42L, 2));
 
         mockMvc.perform(post("/api/game/session/start")
                         .with(user(player))
@@ -51,6 +52,19 @@ class ApiControllerTest {
                 .andExpect(jsonPath("$.sessionId").value(42))
                 .andExpect(jsonPath("$.canPlay").value(true))
                 .andExpect(jsonPath("$.playsRemaining").value(2));
+    }
+
+    @Test
+    void startSessionReturnsForbiddenWhenCampaignClosed() throws Exception {
+        when(gameSessionService.startSession(eq(1L), anyString()))
+                .thenThrow(new CampaignClosedException());
+
+        mockMvc.perform(post("/api/game/session/start")
+                        .with(user(player))
+                        .with(csrf()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.canPlay").value(false))
+                .andExpect(jsonPath("$.reason").value("CAMPAIGN_CLOSED"));
     }
 
     @Test

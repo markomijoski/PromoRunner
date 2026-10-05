@@ -1,6 +1,11 @@
 # PromoRunner — Agent Working Document
 ### Version 2.0 | Single-Tenant | Spring Boot + Thymeleaf + HTMX + Alpine.js
 
+> **OUTDATED — historical only.** This PRD no longer matches the running app.
+> Auth is email+password (not magic link). The live game is a custom canvas car
+> runner under `static/js/game.js` + `static/game/` (not Phaser / `game-config.json`).
+> Sessions are HTTP (not Redis). Prefer `README.md` and the source tree as truth.
+
 > **How to use this file:** This is the canonical spec for the PromoRunner project.
 > Work through it section by section. Every task has a checkbox. Mark `[x]` when done.
 > Ask before deviating from any decision marked **LOCKED**.

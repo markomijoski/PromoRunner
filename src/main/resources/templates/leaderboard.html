@@ -14,13 +14,19 @@
     <div th:replace="~{fragments/scoreboard :: table(${leaderboard}, ${currentUser != null ? currentUser.id : null})}"></div>
   </div>
   <div class="mt-8">
-    <a href="/"
-       class="inline-flex rounded-lg px-6 py-3 font-display font-bold uppercase"
-       style="background:#FFD200;color:#0A0A0A">
+    <a href="/" class="btn-primary btn-lg">
       Играј
     </a>
   </div>
 </main>
+
+<footer class="mx-auto max-w-3xl px-4 pb-10 text-center text-xs text-amsm-muted sm:text-left">
+  <a href="/privacy" class="hover:text-amsm-ink">Приватност</a>
+  ·
+  <a href="/terms" class="hover:text-amsm-ink">Услови</a>
+</footer>
+
+<div th:replace="~{fragments/modals :: shell}"></div>
 
 <script th:src="@{/js/app.js}"></script>
 <script th:src="@{/js/leaderboard.js}"></script>

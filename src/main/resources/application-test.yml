@@ -1,4 +1,4 @@
-# Phase 1 tests: no external Postgres/Redis. Full @SpringBootTest with infra comes later.
+# Tests: no external Postgres. Full @SpringBootTest with infra comes later.
 spring:
   autoconfigure:
     exclude:
@@ -6,9 +6,6 @@ spring:
       - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
       - org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration
       - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
-      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
-      - org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration
-      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration
       - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
 
   flyway:

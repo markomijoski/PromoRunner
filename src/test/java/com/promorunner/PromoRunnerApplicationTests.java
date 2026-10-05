@@ -1,7 +1,8 @@
 package com.promorunner;
 
 import com.promorunner.repository.GameSessionRepository;
-import com.promorunner.repository.MagicLinkTokenRepository;
+import com.promorunner.repository.PasswordResetTokenRepository;
+import com.promorunner.repository.CampaignWinnerNotificationRepository;
 import com.promorunner.repository.ScoreRepository;
 import com.promorunner.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -17,11 +18,13 @@ class PromoRunnerApplicationTests {
     @MockitoBean
     private UserRepository userRepository;
     @MockitoBean
-    private MagicLinkTokenRepository magicLinkTokenRepository;
+    private PasswordResetTokenRepository passwordResetTokenRepository;
     @MockitoBean
     private GameSessionRepository gameSessionRepository;
     @MockitoBean
     private ScoreRepository scoreRepository;
+    @MockitoBean
+    private CampaignWinnerNotificationRepository campaignWinnerNotificationRepository;
     @MockitoBean
     private JavaMailSender javaMailSender;
 

@@ -43,8 +43,7 @@ class ScoreServiceTest {
         ScoreUpdateResult result = scoreService.updateScore(1L, 10L, 500);
 
         assertThat(result.personalBest()).isTrue();
-        assertThat(result.bestScore()).isEqualTo(500);
-        assertThat(result.totalPlays()).isEqualTo(1);
+        assertThat(result.score()).isEqualTo(500);
         verifyEvent(1L, 10L, 500, true);
     }
 
@@ -62,8 +61,8 @@ class ScoreServiceTest {
         ScoreUpdateResult result = scoreService.updateScore(1L, 11L, 250);
 
         assertThat(result.personalBest()).isTrue();
-        assertThat(result.bestScore()).isEqualTo(250);
-        assertThat(result.totalPlays()).isEqualTo(3);
+        assertThat(existing.getBestScore()).isEqualTo(250);
+        assertThat(existing.getTotalPlays()).isEqualTo(3);
     }
 
     @Test
@@ -80,8 +79,8 @@ class ScoreServiceTest {
         ScoreUpdateResult result = scoreService.updateScore(1L, 12L, 100);
 
         assertThat(result.personalBest()).isFalse();
-        assertThat(result.bestScore()).isEqualTo(900);
-        assertThat(result.totalPlays()).isEqualTo(6);
+        assertThat(existing.getBestScore()).isEqualTo(900);
+        assertThat(existing.getTotalPlays()).isEqualTo(6);
         verifyEvent(1L, 12L, 100, false);
     }
 

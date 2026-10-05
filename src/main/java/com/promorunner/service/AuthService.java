@@ -1,14 +1,11 @@
 package com.promorunner.service;
 
 import com.promorunner.config.AppProperties;
-import com.promorunner.exception.InvalidMagicLinkException;
-import com.promorunner.model.MagicLinkToken;
+import com.promorunner.exception.InvalidResetTokenException;
+import com.promorunner.model.PasswordResetToken;
 import com.promorunner.model.User;
-import com.promorunner.repository.MagicLinkTokenRepository;
+import com.promorunner.repository.PasswordResetTokenRepository;
 import com.promorunner.repository.UserRepository;
-import com.promorunner.security.UserPrincipal;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -18,136 +15,219 @@ import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import java.util.regex.Pattern;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.thymeleaf.TemplateEngine;
-import org.thymeleaf.context.Context;
 
 @Service
 public class AuthService {
 
-    private static final int TOKEN_TTL_MINUTES = 15;
+    private static final int RESET_TOKEN_TTL_MINUTES = 30;
+    private static final int PASSWORD_MIN = 8;
+    private static final int USERNAME_MIN = 3;
+    private static final int USERNAME_MAX = 20;
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("[\\p{L}\\p{N}_]+");
+    private static final String GENERIC_LOGIN_ERROR = "Погрешна е-пошта или лозинка";
 
     private final UserRepository userRepository;
-    private final MagicLinkTokenRepository magicLinkTokenRepository;
-    private final JavaMailSender mailSender;
-    private final TemplateEngine templateEngine;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final MailService mailService;
     private final AppProperties appProperties;
-    private final MagicLinkRateLimiter rateLimiter;
-    private final String mailFrom;
 
     public AuthService(
             UserRepository userRepository,
-            MagicLinkTokenRepository magicLinkTokenRepository,
-            JavaMailSender mailSender,
-            TemplateEngine templateEngine,
-            AppProperties appProperties,
-            MagicLinkRateLimiter rateLimiter,
-            @Value("${spring.mail.from:noreply@localhost}") String mailFrom) {
+            PasswordResetTokenRepository passwordResetTokenRepository,
+            PasswordEncoder passwordEncoder,
+            AuthenticationManager authenticationManager,
+            MailService mailService,
+            AppProperties appProperties) {
         this.userRepository = userRepository;
-        this.magicLinkTokenRepository = magicLinkTokenRepository;
-        this.mailSender = mailSender;
-        this.templateEngine = templateEngine;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
+        this.mailService = mailService;
         this.appProperties = appProperties;
-        this.rateLimiter = rateLimiter;
-        this.mailFrom = mailFrom;
     }
 
     @Transactional
-    public void requestMagicLink(String email) {
-        String normalized = normalizeEmail(email);
-        if (normalized.isBlank()) {
-            throw new IllegalArgumentException("Email is required");
+    public String register(String email, String nickname, String password) {
+        String normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail.isBlank() || !normalizedEmail.contains("@")) {
+            throw new IllegalArgumentException("Потребна е валидна е-пошта");
         }
-        rateLimiter.check(normalized);
+        String normalizedUsername = normalizeUsername(nickname);
+        if (normalizedUsername.isBlank()) {
+            throw new IllegalArgumentException("Корисничкото име е задолжително");
+        }
+        validateUsername(normalizedUsername, null);
+        validatePassword(password);
 
-        User user = userRepository.findByEmailIgnoreCase(normalized)
-                .orElseGet(() -> createUser(normalized));
-
-        magicLinkTokenRepository.invalidateUnusedForUser(user.getId());
-
-        String rawToken = UUID.randomUUID().toString();
-        MagicLinkToken token = new MagicLinkToken();
-        token.setUser(user);
-        token.setTokenHash(sha256Hex(rawToken));
-        token.setExpiresAt(Instant.now().plus(TOKEN_TTL_MINUTES, ChronoUnit.MINUTES));
-        magicLinkTokenRepository.save(token);
-
-        sendMagicLinkEmail(user.getEmail(), rawToken);
-    }
-
-    @Transactional
-    public String verifyToken(String rawToken) {
-        if (rawToken == null || rawToken.isBlank()) {
-            throw new InvalidMagicLinkException("Magic link token is missing");
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new IllegalArgumentException("Е-поштата е веќе регистрирана");
         }
 
-        String hash = sha256Hex(rawToken.trim());
-        MagicLinkToken token = magicLinkTokenRepository.findByTokenHash(hash)
-                .orElseThrow(() -> new InvalidMagicLinkException("Invalid magic link"));
-
-        if (token.getUsedAt() != null) {
-            throw new InvalidMagicLinkException("Magic link has already been used");
-        }
-        if (token.getExpiresAt().isBefore(Instant.now())) {
-            throw new InvalidMagicLinkException("Magic link has expired");
-        }
-
-        token.setUsedAt(Instant.now());
-        magicLinkTokenRepository.save(token);
-
-        User user = token.getUser();
+        User user = new User();
+        user.setEmail(normalizedEmail);
+        user.setDisplayName(normalizedUsername);
+        user.setPasswordHash(passwordEncoder.encode(password));
         user.setEmailVerified(true);
-        user.setLastSeenAt(Instant.now());
         userRepository.save(user);
 
-        UserPrincipal principal = UserPrincipal.from(user);
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
-        var context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
-
+        authenticate(normalizedEmail, password);
+        user.setLastSeenAt(Instant.now());
+        userRepository.save(user);
         return "/game";
     }
 
-    private User createUser(String email) {
-        User user = new User();
-        user.setEmail(email);
-        return userRepository.save(user);
-    }
-
-    private void sendMagicLinkEmail(String to, String rawToken) {
-        String verifyUrl = appProperties.getBaseUrl().replaceAll("/$", "")
-                + "/auth/verify?token=" + rawToken;
-
-        Context context = new Context(Locale.ENGLISH);
-        context.setVariables(Map.of(
-                "verifyUrl", verifyUrl,
-                "expiresMinutes", TOKEN_TTL_MINUTES
-        ));
-        String html = templateEngine.process("email/magic-link", context);
+    @Transactional
+    public String login(String email, String password) {
+        String normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail.isBlank() || password == null || password.isBlank()) {
+            throw new IllegalArgumentException(GENERIC_LOGIN_ERROR);
+        }
 
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, false, StandardCharsets.UTF_8.name());
-            helper.setFrom(mailFrom);
-            helper.setTo(to);
-            helper.setSubject("Вашиот AMSM Runner линк за најава");
-            helper.setText(html, true);
-            mailSender.send(message);
-        } catch (MessagingException e) {
-            throw new IllegalStateException("Failed to send magic link email", e);
+            authenticate(normalizedEmail, password);
+        } catch (BadCredentialsException ex) {
+            throw new IllegalArgumentException(GENERIC_LOGIN_ERROR);
         }
+
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException(GENERIC_LOGIN_ERROR));
+        user.setLastSeenAt(Instant.now());
+        userRepository.save(user);
+
+        if (user.getDisplayName() == null || user.getDisplayName().isBlank()) {
+            return "/game?modal=username";
+        }
+        return "/game";
+    }
+
+    @Transactional
+    public void requestPasswordReset(String email) {
+        String normalized = normalizeEmail(email);
+        if (normalized.isBlank()) {
+            return;
+        }
+
+        userRepository.findByEmailIgnoreCase(normalized).ifPresent(user -> {
+            passwordResetTokenRepository.invalidateUnusedForUser(user.getId());
+
+            String rawToken = UUID.randomUUID().toString();
+            PasswordResetToken token = new PasswordResetToken();
+            token.setUser(user);
+            token.setTokenHash(sha256Hex(rawToken));
+            token.setExpiresAt(Instant.now().plus(RESET_TOKEN_TTL_MINUTES, ChronoUnit.MINUTES));
+            passwordResetTokenRepository.save(token);
+
+            sendPasswordResetEmail(user.getEmail(), rawToken);
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public void requireValidResetToken(String rawToken) {
+        findValidResetToken(rawToken);
+    }
+
+    @Transactional
+    public void resetPassword(String rawToken, String newPassword) {
+        validatePassword(newPassword);
+        PasswordResetToken token = findValidResetToken(rawToken);
+
+        token.setUsedAt(Instant.now());
+        passwordResetTokenRepository.save(token);
+
+        User user = token.getUser();
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setEmailVerified(true);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void setUsername(long userId, String username) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        String normalizedUsername = normalizeUsername(username);
+        if (normalizedUsername.isBlank()) {
+            throw new IllegalArgumentException("Корисничкото име е задолжително");
+        }
+        validateUsername(normalizedUsername, userId);
+        user.setDisplayName(normalizedUsername);
+        userRepository.save(user);
+    }
+
+    private void authenticate(String email, String password) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, password)
+        );
+        var context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
+    }
+
+    private PasswordResetToken findValidResetToken(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new InvalidResetTokenException("Reset token is missing");
+        }
+        String hash = sha256Hex(rawToken.trim());
+        PasswordResetToken token = passwordResetTokenRepository.findByTokenHash(hash)
+                .orElseThrow(() -> new InvalidResetTokenException("Invalid reset link"));
+
+        if (token.getUsedAt() != null) {
+            throw new InvalidResetTokenException("Reset link has already been used");
+        }
+        if (token.getExpiresAt().isBefore(Instant.now())) {
+            throw new InvalidResetTokenException("Reset link has expired");
+        }
+        return token;
+    }
+
+    void validateUsername(String username, Long excludeUserId) {
+        if (username.length() < USERNAME_MIN || username.length() > USERNAME_MAX) {
+            throw new IllegalArgumentException(
+                    "Корисничкото име мора да има меѓу " + USERNAME_MIN + " и " + USERNAME_MAX + " знаци");
+        }
+        if (!USERNAME_PATTERN.matcher(username).matches()) {
+            throw new IllegalArgumentException(
+                    "Корисничкото име може да содржи само букви, бројки и _");
+        }
+        if (userRepository.existsByDisplayNameIgnoreCaseExcludingId(username, excludeUserId)) {
+            throw new IllegalArgumentException("Тоа корисничко име е зафатено");
+        }
+    }
+
+    private void validatePassword(String password) {
+        if (password == null || password.length() < PASSWORD_MIN) {
+            throw new IllegalArgumentException(
+                    "Лозинката мора да има најмалку " + PASSWORD_MIN + " знаци");
+        }
+    }
+
+    private void sendPasswordResetEmail(String to, String rawToken) {
+        String resetUrl = appProperties.getBaseUrl().replaceAll("/$", "")
+                + "/auth/reset?token=" + rawToken;
+
+        String html = mailService.render("email/password-reset", Map.of(
+                "resetUrl", resetUrl,
+                "expiresMinutes", RESET_TOKEN_TTL_MINUTES
+        ));
+        mailService.sendHtml(to, "Ресетирање на лозинка — AMSM Runner", html);
     }
 
     static String normalizeEmail(String email) {
         return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    static String normalizeUsername(String username) {
+        return username == null ? "" : username.trim();
     }
 
     static String sha256Hex(String value) {
